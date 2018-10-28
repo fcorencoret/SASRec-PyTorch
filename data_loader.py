@@ -20,7 +20,7 @@ class MovieLensLoader(data.Dataset):
 			self.total_data = 0
 			if self.dataset == 'train':
 				for user in self.user_train.values():
-					self.total_data += max(1, (len(user) - self.n) // self.stride)
+					self.total_data += max(1, ((len(user) - self.n) // self.stride) + 1)
 			if self.dataset == 'val' or self.dataset == 'test':
 				self.total_data = len(self.user_train)
 
@@ -48,9 +48,17 @@ class MovieLensLoader(data.Dataset):
 
 		if self.current_item < 0:
 			x = torch.zeros(self.n).long()		
-			n_ratings = len(self.user_train[self.current_user])	
-			x[self.n - n_ratings + 1: ] = torch.LongTensor(user_reviews[:-1])	
-			y = user_reviews[-1]
+			n_ratings = len(self.user_train[self.current_user])
+			
+			# window slide option
+			if n_ratings >= self.n + 1: 
+				n_ratings = self.n + self.current_item	
+				x[self.n - n_ratings + 1: ] = torch.LongTensor(user_reviews[:n_ratings - 1])	
+				y = user_reviews[n_ratings]
+
+			else: 
+				x[self.n - n_ratings + 1: ] = torch.LongTensor(user_reviews[:-1])	
+				y = user_reviews[-1]				
 			self.current_user += 1
 			self.current_item = len(self.user_train[self.current_user]) - self.n - 1
 			return (x, y)
