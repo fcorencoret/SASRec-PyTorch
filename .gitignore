@@ -116,10 +116,12 @@ dmypy.json
 # Checkpoints
 checkpoints/
 
-# PDF 
+# PDF
 *.pdf
 
 # Data
 ml-latest-small/
 data/*.csv
 data/README.txt
+
+**/.DS_Store
