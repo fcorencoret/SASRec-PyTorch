@@ -48,30 +48,31 @@ class MovieLensLoader(data.Dataset):
 
 		if self.current_item < 0:
 			x = torch.zeros(self.n).long()		
+			y = torch.zeros(self.n).long()		
 			n_ratings = len(self.user_train[self.current_user])
 			
 			# window slide option
 			if n_ratings >= self.n + 1: 
 				n_ratings = self.n + self.current_item	
 				x[self.n - n_ratings + 1: ] = torch.LongTensor(user_reviews[:n_ratings - 1])	
-				y = user_reviews[n_ratings]
+				y[self.n - n_ratings + 1: ] = torch.LongTensor(user_reviews[1 :n_ratings])
 
 			else: 
 				x[self.n - n_ratings + 1: ] = torch.LongTensor(user_reviews[:-1])	
-				y = user_reviews[-1]				
+				y[self.n - n_ratings + 1: ] = torch.LongTensor(user_reviews[1:])			
 			self.current_user += 1
 			self.current_item = len(self.user_train[self.current_user]) - self.n - 1
 			return (x, y)
 
 		elif self.current_item > 0:
 			x = torch.LongTensor(user_reviews[self.current_item: self.current_item + self.n])
-			y = user_reviews[self.current_item + self.n]
+			y = torch.LongTensor(user_reviews[self.current_item + 1: self.current_item + self.n + 1])
 			self.current_item -= self.stride
 			return (x, y)
 
 		elif self.current_item == 0:
 			x = torch.LongTensor(user_reviews[self.current_item: self.current_item + self.n])
-			y = user_reviews[self.current_item + self.n]
+			y = torch.LongTensor(user_reviews[self.current_item + 1: self.current_item + self.n + 1])
 			if self.current_user == self.usernum: self._reset_current_indices()
 			else:
 				self.current_user += 1
@@ -82,12 +83,15 @@ class MovieLensLoader(data.Dataset):
 	def _getitem_val_test(self, index):
 		idx = index + 1
 		x = torch.zeros(self.n).long()
+		y = torch.zeros(self.n).long()
 		n_ratings = len(self.user_train[idx])
 		if n_ratings >= self.n + 1:
 			x = torch.LongTensor(self.user_train[idx][n_ratings - self.n - 1 : -1])
+			y = torch.LongTensor(self.user_train[idx][n_ratings - self.n: ])
 		else:
 			x[self.n - n_ratings + 1: ] = torch.LongTensor(self.user_train[idx][:-1])
-		y = self.user_train[idx][-1]
+			x[self.n - n_ratings + 1: ] = torch.LongTensor(self.user_train[idx][1:])
+		
 
 		if self.dataset == 'val': 
 			x[:-1] = x[1:]
