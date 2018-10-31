@@ -1,14 +1,15 @@
 from data_loader import MovieLensLoader
-from model import AttentionBlock
+from model import SASRec
 import torch
 from callbacks import AverageMeter
 from utils import accuracy, save_checkpoint
 import time
+import torch.nn.functional as F
 
 ROOT_PATH = 'data'
 n = 50
 d = 300
-BATCH_SIZE = 16
+BATCH_SIZE = 1
 lr = 0.001
 num_epochs = 10
 resume = False
@@ -39,14 +40,14 @@ def main():
 	print(" > Val length: {}".format(len(val_loader)))
 
 	# create model
-	model = AttentionBlock(
+	model = SASRec(
 		n_items=train_loader.dataset.itemnum, 
 		d=d, 
-		n=n)
+		n=n,
+		attention_stack=3,
+		ffn_hidden_dim=100,
+		dropout=0.2)
 	print(" > Created the model")
-
-	# define loss function (criterion)
-	criterion = torch.nn.CrossEntropyLoss()
 
 	# define optimizer
 	optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -56,10 +57,10 @@ def main():
 	for epoch in range(start_epoch, num_epochs):
 
 		# train for one epoch
-		train_loss, train_top1, train_top5 = train(train_loader, model, criterion, optimizer, epoch)
+		train_loss, train_top1, train_top5 = train(train_loader, model, optimizer, epoch)
 
 		# evaluate on validation set
-		val_loss, val_top1, val_top5 = validate(val_loader, model, criterion)
+		val_loss, val_top1, val_top5 = validate(val_loader, model)
 		print(" > Validation loss after epoch {} = {}".format(epoch, val_loss))
 
 
@@ -73,7 +74,7 @@ def main():
 			'best_loss': best_loss,
 		}, is_best, output_dir, model_name)
 
-def train(train_loader, model, criterion, optimizer, epoch):
+def train(train_loader, model, optimizer, epoch):
 	batch_time = AverageMeter()
 	data_time = AverageMeter()
 	losses = AverageMeter()
@@ -91,9 +92,16 @@ def train(train_loader, model, criterion, optimizer, epoch):
 		# reset model gradients
 		model.zero_grad()
 
+
+		# TODO
 		# compute output and loss
+		loss = 0
 		output = model(input)
-		loss = criterion(output, target)
+		for batch in range(len(output)):
+			for item in range(len(output[batch])):
+				for class_index in range(len(output[batch][item])):
+					if class_index == target[batch][item]: loss -= torch.log(torch.sigmoid(output[batch][item][class_index]))
+					else: loss -= torch.log(1 - torch.sigmoid(output[batch][item][class_index]))
 
 		# measure accuracy and record loss
 		prec1, prec5 = accuracy(output, target, topk=(1, 5))
@@ -122,7 +130,7 @@ def train(train_loader, model, criterion, optimizer, epoch):
 
 	return losses.avg, top1.avg, top5.avg
 
-def validate(val_loader, model, criterion, class_to_idx=None):
+def validate(val_loader, model, class_to_idx=None):
 	batch_time = AverageMeter()
 	losses = AverageMeter()
 	top1 = AverageMeter()
