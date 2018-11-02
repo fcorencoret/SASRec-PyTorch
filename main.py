@@ -9,7 +9,7 @@ import torch.nn.functional as F
 ROOT_PATH = 'data'
 n = 50
 d = 300
-BATCH_SIZE = 1
+BATCH_SIZE = 2
 lr = 0.001
 num_epochs = 10
 resume = False
@@ -95,13 +95,17 @@ def train(train_loader, model, optimizer, epoch):
 
 		# TODO
 		# compute output and loss
-		loss = 0
+		loss = torch.zeros(1)
 		output = model(input)
 		for batch in range(len(output)):
 			for item in range(len(output[batch])):
-				for class_index in range(len(output[batch][item])):
-					if class_index == target[batch][item]: loss -= torch.log(torch.sigmoid(output[batch][item][class_index]))
-					else: loss -= torch.log(1 - torch.sigmoid(output[batch][item][class_index]))
+				r_ot_t_position = target[batch][item]
+				r_ot_t = output[batch][item][r_ot_t_position]
+				sums = torch.log(torch.ones(1) - torch.sigmoid(output[batch][item]))
+				mask_non_S = torch.ones_like(output[batch][item])
+				mask_non_S[input[batch]] = 0
+				mask_non_S[target[batch][-1]] = 0
+				loss -= (torch.log(torch.sigmoid(r_ot_t)) + torch.sum(mask_non_S * sums))
 
 		# measure accuracy and record loss
 		prec1, prec5 = accuracy(output, target, topk=(1, 5))
