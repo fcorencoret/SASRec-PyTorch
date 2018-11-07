@@ -59,9 +59,12 @@ class MovieLensLoader(data.Dataset):
 
 			else: 
 				x[self.n - n_ratings + 1: ] = torch.LongTensor(user_reviews[:-1])	
-				y[self.n - n_ratings + 1: ] = torch.LongTensor(user_reviews[1:])			
-			self.current_user += 1
-			self.current_item = len(self.user_train[self.current_user]) - self.n - 1
+				y[self.n - n_ratings + 1: ] = torch.LongTensor(user_reviews[1:])	
+
+			if self.current_user == self.usernum: self._reset_current_indices()
+			else:		
+				self.current_user += 1
+				self.current_item = len(self.user_train[self.current_user]) - self.n - 1
 			return (x, y)
 
 		elif self.current_item > 0:
