@@ -11,7 +11,7 @@ n = 50
 d = 300
 BATCH_SIZE = 2
 lr = 0.001
-num_epochs = 10
+num_epochs = 1
 resume = False
 start_epoch = 0
 print_freq = 2
@@ -92,20 +92,22 @@ def train(train_loader, model, optimizer, epoch):
 		# reset model gradients
 		model.zero_grad()
 
-
-		# TODO
 		# compute output and loss
 		loss = torch.zeros(1)
 		output = model(input)
-		for batch in range(len(output)):
-			for item in range(len(output[batch])):
-				r_ot_t_position = target[batch][item]
-				r_ot_t = output[batch][item][r_ot_t_position]
-				sums = torch.log(torch.ones(1) - torch.sigmoid(output[batch][item]))
-				mask_non_S = torch.ones_like(output[batch][item])
-				mask_non_S[input[batch]] = 0
-				mask_non_S[target[batch][-1]] = 0
-				loss -= (torch.log(torch.sigmoid(r_ot_t)) + torch.sum(mask_non_S * sums))
+		for sequence in range(len(output)):
+			sums = torch.log(torch.ones_like(output[sequence]) - torch.sigmoid(output[sequence]))
+			mask_non_S = torch.ones_like(output[sequence])
+
+			log_correct_item = 0
+			for item in range(len(input[sequence])):
+				mask_non_S[:, input[sequence][item]] = 0
+				log_correct_item += torch.log(torch.sigmoid(output[sequence][item][input[sequence][item]]))
+			
+			last_item = target[sequence][-1]
+			log_correct_item += torch.log(torch.sigmoid(output[sequence][item][last_item]))
+			mask_non_S[:, last_item] = 0
+			loss -= (log_correct_item + torch.sum(mask_non_S * sums))			
 
 		# measure accuracy and record loss
 		prec1, prec5 = accuracy(output, target, topk=(1, 5))
