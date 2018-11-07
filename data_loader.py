@@ -2,6 +2,7 @@ import torch.utils.data as data
 import preprocess_dataset
 import json
 import torch
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 class MovieLensLoader(data.Dataset):
 	def __init__(self, root_path, dataset='train', n=50, stride=5):
@@ -65,13 +66,13 @@ class MovieLensLoader(data.Dataset):
 			else:		
 				self.current_user += 1
 				self.current_item = len(self.user_train[self.current_user]) - self.n - 1
-			return (x, y)
+			return (x.to(device), y.to(device))
 
 		elif self.current_item > 0:
 			x = torch.LongTensor(user_reviews[self.current_item: self.current_item + self.n])
 			y = torch.LongTensor(user_reviews[self.current_item + 1: self.current_item + self.n + 1])
 			self.current_item -= self.stride
-			return (x, y)
+			return (x.to(device), y.to(device))
 
 		elif self.current_item == 0:
 			x = torch.LongTensor(user_reviews[self.current_item: self.current_item + self.n])
@@ -80,7 +81,7 @@ class MovieLensLoader(data.Dataset):
 			else:
 				self.current_user += 1
 				self.current_item = len(self.user_train[self.current_user]) - self.n - 1
-			return (x, y)
+			return (x.to(device), y.to(device))
 
 
 	def _getitem_val_test(self, index):

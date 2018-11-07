@@ -4,20 +4,23 @@ import torch.autograd as autograd
 import torch.nn.functional as F
 import math
 
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
 class EmbeddingLayer(nn.Module):
 	def __init__(self, n_items, d=300, n=30, dropout=0.2):
 		super().__init__()
 		self.n_items = n_items
 		self.d = d
 		self.n = n
-		self.embedding = nn.Embedding(self.n_items, self.d, padding_idx=0)
-		self.dropout = nn.Dropout(dropout)
+		self.embedding = nn.Embedding(self.n_items, self.d, padding_idx=0).to(device)
+		self.dropout = nn.Dropout(dropout).to(device)
 
 	def forward(self, X):
 		embed = self.embedding(X.long())
-		positional_embedding = autograd.Variable(torch.Tensor(self.n, 1), requires_grad=True)
-		nn.init.xavier_uniform_(positional_embedding)
-		return self.dropout(embed + positional_embedding)
+		return self.dropout(embed)
+                #positional_embedding = autograd.Variable(torch.Tensor(self.n, 1), requires_grad=True)
+		#nn.init.xavier_uniform_(positional_embedding)
+		#return self.dropout(embed + positional_embedding)
 
 
 
@@ -28,13 +31,13 @@ class AttentionBlock(nn.Module):
 		self.d = d
 		self.n = n
 		self.ffn_hidden_dim = ffn_hidden_dim
-		self.key_embedding = nn.Linear(self.d, self.d, bias=False)
-		self.query_embedding = nn.Linear(self.d, self.d, bias=False)
-		self.value_embedding = nn.Linear(self.d, self.d, bias=False)
-		self.linear1 = nn.Linear(self.d, self.d, bias=True)
-		self.linear2 = nn.Linear(self.d, self.d, bias=True)
-		self.normalize = nn.LayerNorm((self.n, self.d))
-		self.dropout = nn.Dropout(dropout)
+		self.key_embedding = nn.Linear(self.d, self.d, bias=False).to(device)
+		self.query_embedding = nn.Linear(self.d, self.d, bias=False).to(device)
+		self.value_embedding = nn.Linear(self.d, self.d, bias=False).to(device)
+		self.linear1 = nn.Linear(self.d, self.d, bias=True).to(device)
+		self.linear2 = nn.Linear(self.d, self.d, bias=True).to(device)
+		self.normalize = nn.LayerNorm((self.n, self.d)).to(device)
+		self.dropout = nn.Dropout(dropout).to(device)
 		
 
 	def forward(self, X):
@@ -65,10 +68,7 @@ class SASRec(nn.Module):
 				d=self.d, 
 				n=self.n))
 
-		self.relevance = nn.Linear(self.d, self.n_items, bias=False)
-
-
-
+		self.relevance = nn.Linear(self.d, self.n_items, bias=False).to(device)
 
 	def forward(self, X):
 		out = self.input_embedding(X)

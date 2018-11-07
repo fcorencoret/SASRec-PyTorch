@@ -9,7 +9,7 @@ import torch.nn.functional as F
 ROOT_PATH = 'data'
 n = 50
 d = 300
-BATCH_SIZE = 2
+BATCH_SIZE = 16
 lr = 0.001
 num_epochs = 1
 resume = False
@@ -18,6 +18,7 @@ print_freq = 2
 best_loss = float('Inf')
 output_dir = 'checkpoints'
 model_name = 'SelfAttention'
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 def main():
 	global best_loss
@@ -46,7 +47,7 @@ def main():
 		n=n,
 		attention_stack=3,
 		ffn_hidden_dim=100,
-		dropout=0.2)
+		dropout=0.2).to(device)
 	print(" > Created the model")
 
 	# define optimizer
@@ -93,7 +94,7 @@ def train(train_loader, model, optimizer, epoch):
 		model.zero_grad()
 
 		# compute output and loss
-		loss = torch.zeros(1)
+		loss = torch.zeros(1).to(device)
 		output = model(input)
 		for sequence in range(len(output)):
 			sums = torch.log(torch.ones_like(output[sequence]) - torch.sigmoid(output[sequence]))
