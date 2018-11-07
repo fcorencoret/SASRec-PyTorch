@@ -5,7 +5,7 @@ import torch
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 class MovieLensLoader(data.Dataset):
-	def __init__(self, root_path, dataset='train', n=50, stride=5):
+	def __init__(self, root_path, dataset='train', n=50, stride=None):
 		self.root_path = root_path
 		self.dataset = dataset
 		self.n = n
@@ -21,7 +21,9 @@ class MovieLensLoader(data.Dataset):
 			self.total_data = 0
 			if self.dataset == 'train':
 				for user in self.user_train.values():
-					self.total_data += max(1, ((len(user) - self.n) // self.stride) + 1)
+					if self.stride: self.total_data += max(1, ((len(user) - self.n) // self.stride) + 1)
+					else: self.total_data += 1
+					
 			if self.dataset == 'val' or self.dataset == 'test':
 				self.total_data = len(self.user_train)
 
@@ -42,6 +44,7 @@ class MovieLensLoader(data.Dataset):
 			self.itemnum = int(infile.readline().rstrip())		
 
 	def __getitem__(self, index):
+
 		if self.dataset == 'val' or self.dataset == 'test': return self._getitem_val_test(index)
 
 		user_reviews = self.user_train[self.current_user]
@@ -62,27 +65,27 @@ class MovieLensLoader(data.Dataset):
 				x[self.n - n_ratings + 1: ] = torch.LongTensor(user_reviews[:-1])	
 				y[self.n - n_ratings + 1: ] = torch.LongTensor(user_reviews[1:])	
 
-			if self.current_user == self.usernum: self._reset_current_indices()
-			else:		
-				self.current_user += 1
-				self.current_item = len(self.user_train[self.current_user]) - self.n - 1
+			self._next_user()
 			return (x.to(device), y.to(device))
 
 		elif self.current_item > 0:
 			x = torch.LongTensor(user_reviews[self.current_item: self.current_item + self.n])
 			y = torch.LongTensor(user_reviews[self.current_item + 1: self.current_item + self.n + 1])
-			self.current_item -= self.stride
+			if self.stride: self.current_item -= self.stride
+			else: self._next_user()
 			return (x.to(device), y.to(device))
 
 		elif self.current_item == 0:
 			x = torch.LongTensor(user_reviews[self.current_item: self.current_item + self.n])
 			y = torch.LongTensor(user_reviews[self.current_item + 1: self.current_item + self.n + 1])
-			if self.current_user == self.usernum: self._reset_current_indices()
-			else:
-				self.current_user += 1
-				self.current_item = len(self.user_train[self.current_user]) - self.n - 1
+			self._next_user()
 			return (x.to(device), y.to(device))
 
+	def _next_user(self):
+		if self.current_user == self.usernum: self._reset_current_indices()
+		else:
+			self.current_user += 1
+			self.current_item = len(self.user_train[self.current_user]) - self.n - 1
 
 	def _getitem_val_test(self, index):
 		idx = index + 1
