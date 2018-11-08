@@ -9,12 +9,13 @@ import torch.nn.functional as F
 ROOT_PATH = 'data'
 n = 50
 d = 300
-BATCH_SIZE = 16
+BATCH_SIZE = 2
 lr = 0.001
 num_epochs = 1
 resume = False
 start_epoch = 0
 print_freq = 2
+stride=None
 best_loss = float('Inf')
 output_dir = 'checkpoints'
 model_name = 'SelfAttention'
@@ -27,7 +28,7 @@ def main():
 		MovieLensLoader(ROOT_PATH, 
 			dataset='train',
 			n=n,
-			stride=5),
+			stride=stride),
 		batch_size=BATCH_SIZE)
 
 	val_loader = torch.utils.data.DataLoader(
