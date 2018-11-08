@@ -97,19 +97,7 @@ def train(train_loader, model, optimizer, epoch):
 		# compute output and loss
 		loss = torch.zeros(1).to(device)
 		output = model(input)
-		for sequence in range(len(output)):
-			sums = torch.log(torch.ones_like(output[sequence]) - torch.sigmoid(output[sequence]))
-			mask_non_S = torch.ones_like(output[sequence])
-
-			log_correct_item = 0
-			for item in range(len(input[sequence])):
-				mask_non_S[:, input[sequence][item]] = 0
-				log_correct_item += torch.log(torch.sigmoid(output[sequence][item][input[sequence][item]]))
-			
-			last_item = target[sequence][-1]
-			log_correct_item += torch.log(torch.sigmoid(output[sequence][item][last_item]))
-			mask_non_S[:, last_item] = 0
-			loss -= (log_correct_item + torch.sum(mask_non_S * sums))			
+		loss = multiple_binary_cross_entropy(input, target, output, loss)	
 
 		# measure accuracy and record loss
 		prec1, prec5 = accuracy(output, target, topk=(1, 5))
@@ -150,10 +138,11 @@ def validate(val_loader, model, class_to_idx=None):
 	end = time.time()
 	with torch.no_grad():
 		for i, (input, target) in enumerate(val_loader):
-
+		
 			# compute output and loss
+			loss = torch.zeros(1).to(device)
 			output = model(input)
-			loss = criterion(output, target)
+			loss = multiple_binary_cross_entropy(input, target, output, loss)	
 
 			# measure accuracy and record loss
 			prec1, prec5 = accuracy(output, target, topk=(1, 5))
@@ -179,6 +168,21 @@ def validate(val_loader, model, class_to_idx=None):
 
 	return losses.avg, top1.avg, top5.avg
 
+def multiple_binary_cross_entropy(input, target, output, loss):
+	for sequence in range(len(output)):
+		sums = torch.log(torch.ones_like(output[sequence]) - torch.sigmoid(output[sequence]))
+		mask_non_S = torch.ones_like(output[sequence])
+
+		log_correct_item = 0
+		for item in range(len(input[sequence])):
+			mask_non_S[:, input[sequence][item]] = 0
+			log_correct_item += torch.log(torch.sigmoid(output[sequence][item][input[sequence][item]]))
+		
+		last_item = target[sequence][-1]
+		log_correct_item += torch.log(torch.sigmoid(output[sequence][item][last_item]))
+		mask_non_S[:, last_item] = 0
+		loss -= (log_correct_item + torch.sum(mask_non_S * sums))
+	return loss
 
 if __name__ == '__main__':
 	main()
