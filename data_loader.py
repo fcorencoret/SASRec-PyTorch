@@ -111,7 +111,7 @@ class MovieLensLoader(data.Dataset):
 			x[-1] = self.user_val[idx][0]
 			y = self.user_test[idx][0]
 
-		return (x, y)
+		return (x.to(device), y.to(device))
 
 	def _reset_current_indices(self):
 		self.current_user = 1
