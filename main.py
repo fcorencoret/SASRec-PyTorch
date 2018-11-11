@@ -62,7 +62,7 @@ def main():
 		train_loss, train_top1, train_top5 = train(train_loader, model, optimizer, epoch)
 
 		# evaluate on validation set
-		val_loss, val_top1, val_top5 = validate(val_loader, model)
+		val_loss, val_top1, val_top10 = validate(val_loader, model)
 		print(" > Validation loss after epoch {} = {}".format(epoch, val_loss))
 
 
@@ -100,10 +100,10 @@ def train(train_loader, model, optimizer, epoch):
 		loss = multiple_binary_cross_entropy(input, target, output, loss)	
 
 		# measure accuracy and record loss
-		prec1, prec5 = accuracy(output, target, topk=(1, 5))
+		prec1, prec10 = accuracy(output, target, topk=(1, 10))
 		losses.update(loss.item(), input.size(0))
 		top1.update(prec1.item(), input.size(0))
-		top5.update(prec5.item(), input.size(0))
+		top10.update(prec10.item(), input.size(0))
 
 		# compute gradient and do SGD step
 		optimizer.zero_grad()
@@ -120,11 +120,11 @@ def train(train_loader, model, optimizer, epoch):
 				'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
 				'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
 				'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'
-				'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
+				'Prec@10 {top10.val:.3f} ({top10.avg:.3f})'.format(
 					epoch, i, len(train_loader), batch_time=batch_time,
-					data_time=data_time, loss=losses, top1=top1, top5=top5))
+					data_time=data_time, loss=losses, top1=top1, top10=top10))
 
-	return losses.avg, top1.avg, top5.avg
+	return losses.avg, top1.avg, top10.avg
 
 def validate(val_loader, model, class_to_idx=None):
 	batch_time = AverageMeter()
@@ -145,10 +145,10 @@ def validate(val_loader, model, class_to_idx=None):
 			loss = multiple_binary_cross_entropy(input, target, output, loss)	
 
 			# measure accuracy and record loss
-			prec1, prec5 = accuracy(output, target, topk=(1, 5))
+			prec1, prec10 = accuracy(output, target, topk=(1, 10))
 			losses.update(loss.item(), input.size(0))
 			top1.update(prec1.item(), input.size(0))
-			top5.update(prec5.item(), input.size(0))
+			top10.update(prec10.item(), input.size(0))
 
 			# measure elapsed time
 			batch_time.update(time.time() - end)
@@ -158,31 +158,15 @@ def validate(val_loader, model, class_to_idx=None):
 				print('Val: [{0}/{1}]\t'
 					'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
 					'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-					'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'
-					'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
+					'HitRate@1 {top1.val:.3f} ({top1.avg:.3f})\t'
+					'HitRate@10 {top10.val:.3f} ({top10.avg:.3f})'.format(
 						i, len(val_loader), batch_time=batch_time, loss=losses,
-						top1=top1, top5=top5))
+						top1=top1, top10=top10))
 
-	print(' * Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'
-			.format(top1=top1, top5=top5))
+	print(' * HitRate@1 {top1.avg:.3f} HitRate@10 {top10.avg:.3f}'
+			.format(top1=top1, top10=top10))
 
-	return losses.avg, top1.avg, top5.avg
-
-def multiple_binary_cross_entropy(input, target, output, loss):
-	for sequence in range(len(output)):
-		sums = torch.log(torch.ones_like(output[sequence]) - torch.sigmoid(output[sequence]))
-		mask_non_S = torch.ones_like(output[sequence])
-
-		log_correct_item = 0
-		for item in range(len(input[sequence])):
-			mask_non_S[:, input[sequence][item]] = 0
-			log_correct_item += torch.log(torch.sigmoid(output[sequence][item][input[sequence][item]]))
-		
-		last_item = target[sequence][-1]
-		log_correct_item += torch.log(torch.sigmoid(output[sequence][item][last_item]))
-		mask_non_S[:, last_item] = 0
-		loss -= (log_correct_item + torch.sum(mask_non_S * sums))
-	return loss
+	return losses.avg, top1.avg, top10.avg
 
 if __name__ == '__main__':
 	main()
