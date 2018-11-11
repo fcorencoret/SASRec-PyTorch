@@ -9,9 +9,9 @@ import torch.nn.functional as F
 ROOT_PATH = 'data'
 n = 50
 d = 300
-BATCH_SIZE = 2
+BATCH_SIZE = 16 if torch.cuda.is_available() else 2
 lr = 0.001
-num_epochs = 1
+num_epochs = 10 if torch.cuda.is_available() else 1
 resume = False
 start_epoch = 0
 print_freq = 2
