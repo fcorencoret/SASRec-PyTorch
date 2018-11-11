@@ -97,19 +97,22 @@ class MovieLensLoader(data.Dataset):
 			y = torch.LongTensor(self.user_train[idx][n_ratings - self.n: ])
 		else:
 			x[self.n - n_ratings + 1: ] = torch.LongTensor(self.user_train[idx][:-1])
-			x[self.n - n_ratings + 1: ] = torch.LongTensor(self.user_train[idx][1:])
+			y[self.n - n_ratings + 1: ] = torch.LongTensor(self.user_train[idx][1:])
 		
 
 		if self.dataset == 'val': 
 			x[:-1] = x[1:]
 			x[-1] = self.user_train[idx][-1]
-			y = self.user_val[idx][0]
+			y[:-1] = y[1:]
+			y[-1] = self.user_val[idx][0]
 
 		if self.dataset == 'test': 
 			x[:-2] = x[2:]
 			x[-2] = self.user_train[idx][-1]
 			x[-1] = self.user_val[idx][0]
-			y = self.user_test[idx][0]
+			y[:-2] = y[2:]
+			y[-2] = self.user_val[idx][0]
+			y[-1] = self.user_test[idx][0]
 
 		return (x.to(device), y.to(device))
 
