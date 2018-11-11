@@ -59,7 +59,7 @@ def main():
 	for epoch in range(start_epoch, num_epochs):
 
 		# train for one epoch
-		train_loss, train_top1, train_top10, train_nDCG10 = train(train_loader, model, optimizer, epoch)
+		# train_loss, train_top1, train_top10, train_nDCG10 = train(train_loader, model, optimizer, epoch)
 
 		# evaluate on validation set
 		val_loss, val_top1, val_top10, train_nDCG10 = validate(val_loader, model)
@@ -149,7 +149,7 @@ def validate(val_loader, model, class_to_idx=None):
 			loss = multiple_binary_cross_entropy(input, target, output, loss)	
 
 			# measure accuracy and record loss
-			prec1, prec10, nDCG10 = accuracy(output, target, topk=(1, 10))
+			prec1, prec10, nDCG = accuracy(output, target, topk=(1, 10))
 			losses.update(loss.item(), input.size(0))
 			top1.update(prec1.item(), input.size(0))
 			top10.update(prec10.item(), input.size(0))
