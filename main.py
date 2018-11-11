@@ -5,6 +5,7 @@ from callbacks import AverageMeter
 from utils import accuracy, save_checkpoint, multiple_binary_cross_entropy
 import time
 import torch.nn.functional as F
+from opts import parser
 
 ROOT_PATH = 'data'
 n = 50
@@ -22,7 +23,8 @@ model_name = 'SelfAttention'
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 def main():
-	global best_loss
+	global args, best_loss
+	args = parser.parse_args()
 	# load data
 	train_loader = torch.utils.data.DataLoader(
 		MovieLensLoader(ROOT_PATH, 
@@ -51,6 +53,19 @@ def main():
 		dropout=0.2).to(device)
 	print(" > Created the model")
 
+	# resume
+	if args.resume:
+        if os.path.isfile(args.resume):
+            print(("=> loading checkpoint '{}'".format(args.resume)))
+            checkpoint = torch.load(args.resume)
+            args.start_epoch = checkpoint['epoch']
+            best_prec1 = checkpoint['best_prec1']
+            model.load_state_dict(checkpoint['state_dict'])
+            print(("=> loaded checkpoint '{}' (epoch {})"
+                  .format(args.evaluate, checkpoint['epoch'])))
+        else:
+            print(("=> no checkpoint found at '{}'".format(args.resume)))
+
 	# define optimizer
 	optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
@@ -59,7 +74,7 @@ def main():
 	for epoch in range(start_epoch, num_epochs):
 
 		# train for one epoch
-		# train_loss, train_top1, train_top10, train_nDCG10 = train(train_loader, model, optimizer, epoch)
+		train_loss, train_top1, train_top10, train_nDCG10 = train(train_loader, model, optimizer, epoch)
 
 		# evaluate on validation set
 		val_loss, val_top1, val_top10, train_nDCG10 = validate(val_loader, model)
