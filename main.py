@@ -2,7 +2,7 @@ from data_loader import MovieLensLoader
 from model import SASRec
 import torch
 from callbacks import AverageMeter
-from utils import accuracy, save_checkpoint
+from utils import accuracy, save_checkpoint, multiple_binary_cross_entropy
 import time
 import torch.nn.functional as F
 
