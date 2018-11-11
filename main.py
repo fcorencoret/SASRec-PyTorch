@@ -59,7 +59,7 @@ def main():
 	for epoch in range(start_epoch, num_epochs):
 
 		# train for one epoch
-		train_loss, train_top1, train_top5 = train(train_loader, model, optimizer, epoch)
+		# train_loss, train_top1, train_top10 = train(train_loader, model, optimizer, epoch)
 
 		# evaluate on validation set
 		val_loss, val_top1, val_top10 = validate(val_loader, model)
@@ -81,7 +81,7 @@ def train(train_loader, model, optimizer, epoch):
 	data_time = AverageMeter()
 	losses = AverageMeter()
 	top1 = AverageMeter()
-	top5 = AverageMeter()
+	top10 = AverageMeter()
 
 	model.train()
 
@@ -130,7 +130,7 @@ def validate(val_loader, model, class_to_idx=None):
 	batch_time = AverageMeter()
 	losses = AverageMeter()
 	top1 = AverageMeter()
-	top5 = AverageMeter()
+	top10 = AverageMeter()
 
 	# switch to evaluate mode
 	model.eval()
