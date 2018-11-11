@@ -59,7 +59,7 @@ def main():
 	for epoch in range(start_epoch, num_epochs):
 
 		# train for one epoch
-		# train_loss, train_top1, train_top10 = train(train_loader, model, optimizer, epoch)
+		train_loss, train_top1, train_top10 = train(train_loader, model, optimizer, epoch)
 
 		# evaluate on validation set
 		val_loss, val_top1, val_top10 = validate(val_loader, model)
@@ -82,6 +82,7 @@ def train(train_loader, model, optimizer, epoch):
 	losses = AverageMeter()
 	top1 = AverageMeter()
 	top10 = AverageMeter()
+	nDCG10 = AverageMeter()
 
 	model.train()
 
@@ -100,10 +101,11 @@ def train(train_loader, model, optimizer, epoch):
 		loss = multiple_binary_cross_entropy(input, target, output, loss)	
 
 		# measure accuracy and record loss
-		prec1, prec10 = accuracy(output, target, topk=(1, 10))
+		prec1, prec10, nDCG = accuracy(output, target, topk=(1, 10))
 		losses.update(loss.item(), input.size(0))
 		top1.update(prec1.item(), input.size(0))
 		top10.update(prec10.item(), input.size(0))
+		nDCG10.update(nDCG, input.size(0))
 
 		# compute gradient and do SGD step
 		optimizer.zero_grad()
@@ -119,18 +121,20 @@ def train(train_loader, model, optimizer, epoch):
 				'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
 				'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
 				'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-				'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'
-				'Prec@10 {top10.val:.3f} ({top10.avg:.3f})'.format(
+				'HitRate@1 {top1.val:.3f} ({top1.avg:.3f})\t'
+				'HitRate@10 {top10.val:.3f} ({top10.avg:.3f})\t'
+				'nDCG@10 {nDCG10.val:.3f} ({nDCG10.avg:.3f})'.format(
 					epoch, i, len(train_loader), batch_time=batch_time,
-					data_time=data_time, loss=losses, top1=top1, top10=top10))
+					data_time=data_time, loss=losses, top1=top1, top10=top10, nDCG10=nDCG10))
 
-	return losses.avg, top1.avg, top10.avg
+	return losses.avg, top1.avg, top10.avg, nDCG10.avg
 
 def validate(val_loader, model, class_to_idx=None):
 	batch_time = AverageMeter()
 	losses = AverageMeter()
 	top1 = AverageMeter()
 	top10 = AverageMeter()
+	nDCG10 = AverageMeter()
 
 	# switch to evaluate mode
 	model.eval()
@@ -145,10 +149,11 @@ def validate(val_loader, model, class_to_idx=None):
 			loss = multiple_binary_cross_entropy(input, target, output, loss)	
 
 			# measure accuracy and record loss
-			prec1, prec10 = accuracy(output, target, topk=(1, 10))
+			prec1, prec10, nDCG10 = accuracy(output, target, topk=(1, 10))
 			losses.update(loss.item(), input.size(0))
 			top1.update(prec1.item(), input.size(0))
 			top10.update(prec10.item(), input.size(0))
+			nDCG10.update(nDCG, input.size(0))
 
 			# measure elapsed time
 			batch_time.update(time.time() - end)
@@ -159,14 +164,15 @@ def validate(val_loader, model, class_to_idx=None):
 					'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
 					'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
 					'HitRate@1 {top1.val:.3f} ({top1.avg:.3f})\t'
-					'HitRate@10 {top10.val:.3f} ({top10.avg:.3f})'.format(
+					'HitRate@10 {top10.val:.3f} ({top10.avg:.3f})\t'
+					'nDCG@10 {nDCG10.val:.3f} ({nDCG10.avg:.3f})'.format(
 						i, len(val_loader), batch_time=batch_time, loss=losses,
-						top1=top1, top10=top10))
+						top1=top1, top10=top10, nDCG10=nDCG10))
 
-	print(' * HitRate@1 {top1.avg:.3f} HitRate@10 {top10.avg:.3f}'
-			.format(top1=top1, top10=top10))
+	print(' * HitRate@1 {top1.avg:.3f} - HitRate@10 {top10.avg:.3f} * nDCG@10 {nDCG10.avg:.3f}'
+			.format(top1=top1, top10=top10, nDCG10=nDCG10))
 
-	return losses.avg, top1.avg, top10.avg
+	return losses.avg, top1.avg, top10.avg, nDCG10.avg
 
 if __name__ == '__main__':
 	main()

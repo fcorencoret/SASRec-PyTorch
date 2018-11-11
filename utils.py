@@ -1,8 +1,9 @@
 import os
 import torch
 import shutil
+import numpy as np
 
-def accuracy(output, target, topk=(1,)):
+def accuracy(output, target, topk=(1,), nDCG=10):
     """Computes the precision@k for the specified values of k"""
     maxk = max(topk)
     batch_size = target.size(0)
@@ -11,10 +12,19 @@ def accuracy(output, target, topk=(1,)):
     _, pred = output.topk(maxk, 2, True, True)
     target = target.unsqueeze(-1).expand_as(pred)
     correct = pred.eq(target)
+    correct = correct[:, -1]
     res = []
+    # HitRate@K
     for k in topk:
-        correct_k = correct[: , : , : k].sum((2, 1)).to(dtype=torch.float) / n
+        correct_k = correct[: , : k].sum((1, 0)).to(dtype=torch.float)
         res.append(correct_k.sum(0) / batch_size)
+
+    #nDCG@10
+    nDCG = 0
+    for i in range(batch_size):
+        if 1 in correct[i]:
+            nDCG += ( 1 / np.log2( correct[i].argmax().item() + 2 ))
+    res.append(nDCG / batch_size)
     return res
 
 def save_checkpoint(state, is_best, output_dir, model_name, filename='_checkpoint.pth.tar'):
