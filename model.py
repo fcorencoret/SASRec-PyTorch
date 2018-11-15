@@ -14,13 +14,12 @@ class EmbeddingLayer(nn.Module):
 		self.n = n
 		self.embedding = nn.Embedding(self.n_items, self.d, padding_idx=0).to(device)
 		self.dropout = nn.Dropout(dropout).to(device)
+		self.positional_embedding = nn.Parameter(torch.Tensor(self.n, self.d), requires_grad=True).to(device)
+		nn.init.xavier_uniform_(self.positional_embedding)
 
 	def forward(self, X):
 		embed = self.embedding(X.long())
-		return self.dropout(embed)
-                #positional_embedding = autograd.Variable(torch.Tensor(self.n, 1), requires_grad=True)
-		#nn.init.xavier_uniform_(positional_embedding)
-		#return self.dropout(embed + positional_embedding)
+		return self.dropout(embed + self.positional_embedding)
 
 
 
