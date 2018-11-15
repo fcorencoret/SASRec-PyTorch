@@ -6,6 +6,7 @@ from utils import accuracy, save_checkpoint, multiple_binary_cross_entropy
 import time
 import torch.nn.functional as F
 from opts import parser
+import os
 
 ROOT_PATH = 'data'
 n = 50
@@ -55,16 +56,16 @@ def main():
 
 	# resume
 	if args.resume:
-        if os.path.isfile(args.resume):
-            print(("=> loading checkpoint '{}'".format(args.resume)))
-            checkpoint = torch.load(args.resume)
-            args.start_epoch = checkpoint['epoch']
-            best_prec1 = checkpoint['best_prec1']
-            model.load_state_dict(checkpoint['state_dict'])
-            print(("=> loaded checkpoint '{}' (epoch {})"
-                  .format(args.evaluate, checkpoint['epoch'])))
-        else:
-            print(("=> no checkpoint found at '{}'".format(args.resume)))
+		if os.path.isfile(args.resume):
+			print(("=> loading checkpoint '{}'".format(args.resume)))
+			checkpoint = torch.load(args.resume)
+			args.start_epoch = checkpoint['epoch']
+			# best_prec1 = checkpoint['best_prec1']
+			model.load_state_dict(checkpoint['state_dict'])
+			print("=> loaded checkpoint (epoch {})"
+			      .format(checkpoint['epoch']))
+		else:
+			print("=> no checkpoint found at '{}'".format(args.resume))
 
 	# define optimizer
 	optimizer = torch.optim.Adam(model.parameters(), lr=lr)
