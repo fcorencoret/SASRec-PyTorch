@@ -26,6 +26,8 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 def main():
 	global args, best_loss
 	args = parser.parse_args()
+	if args.n_epochs: num_epochs = args.n_epochs
+
 	# load data
 	train_loader = torch.utils.data.DataLoader(
 		MovieLensLoader(ROOT_PATH, 
