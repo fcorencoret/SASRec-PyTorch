@@ -12,7 +12,7 @@ class EmbeddingLayer(nn.Module):
 		self.n_items = n_items
 		self.d = d
 		self.n = n
-		self.embedding = nn.Embedding(self.n_items, self.d, padding_idx=0).to(device)
+		self.embedding = nn.Embedding(self.n_items + 1, self.d).to(device)
 		self.dropout = nn.Dropout(dropout).to(device)
 		self.positional_embedding = nn.Parameter(torch.Tensor(self.n, self.d), requires_grad=True).to(device)
 		nn.init.xavier_uniform_(self.positional_embedding)
@@ -67,15 +67,25 @@ class SASRec(nn.Module):
 				d=self.d, 
 				n=self.n))
 
-		self.relevance = nn.Linear(self.d, self.n_items, bias=False).to(device)
+	def embedding_lookup(self):
+		all_items = torch.tensor([i for i in range(self.n_items)], dtype=torch.long).to(device)
+		self.all_items_embeddings = self.input_embedding.embedding(all_items)
+
+	def calculate_embedding_distances(self, batch):
+		relevances = []
+		for b in batch:
+			relevances.append(torch.mm(b, self.all_items_embeddings.t()).unsqueeze(0))
+		relevances = torch.cat(relevances)
+		return relevances	
 
 	def forward(self, X):
 		out = self.input_embedding(X)
 		for attention_block in self.attention_stack:
 			out = attention_block(out)
-		out = self.relevance(out)
-		# softmax = F.softmax(out, dim=1)
-		return out
+
+		self.embedding_lookup()
+		relevances = self.calculate_embedding_distances(out)
+		return relevances
 
 
 
