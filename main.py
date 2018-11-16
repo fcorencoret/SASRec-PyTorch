@@ -117,7 +117,6 @@ def train(train_loader, model, optimizer, epoch):
 		loss = torch.zeros(1).to(device)
 		output = model(input)
 		loss = multiple_binary_cross_entropy(input, target, output, loss)	
-
 		# measure accuracy and record loss
 		prec1, prec10, nDCG = accuracy(output, target, topk=(1, 10))
 		losses.update(loss.item(), input.size(0))

@@ -38,6 +38,8 @@ def save_checkpoint(state, is_best, output_dir, model_name, filename='_checkpoin
 def multiple_binary_cross_entropy(input, target, output, loss):
     for sequence in range(len(output)):
         sums = torch.log(torch.ones_like(output[sequence]) - torch.sigmoid(output[sequence]))
+        # Clamp to avoid PyTorch -inf
+        sums = torch.clamp(sums, min=-30)
         mask_non_S = torch.ones_like(output[sequence])
 
         log_correct_item = 0

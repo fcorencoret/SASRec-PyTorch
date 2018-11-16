@@ -69,7 +69,7 @@ class SASRec(nn.Module):
 
 	def embedding_lookup(self):
 		all_items = torch.tensor([i for i in range(self.n_items)], dtype=torch.long).to(device)
-		self.all_items_embeddings = self.input_embedding.embedding(all_items)
+		self.all_items_embeddings = self.input_embedding.embedding(all_items).to(device)
 
 	def calculate_embedding_distances(self, batch):
 		relevances = []
