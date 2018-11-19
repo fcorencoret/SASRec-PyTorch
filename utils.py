@@ -44,12 +44,12 @@ def multiple_binary_cross_entropy(input, target, output, loss):
         for item_index, item in enumerate(input[batch_index]):
             if item != 0:
                 mask_non_S[:, item] = 0
-                log_correct_item += torch.log(torch.sigmoid(batch[item_index][item]))
+                log_correct_item += torch.log(torch.sigmoid(batch[item_index][item]) + 1e-24)
             else:
                 mask_non_S[item, :] = 0
         
         last_item = target[batch_index][-1]
-        log_correct_item += torch.log(torch.sigmoid(batch[item_index][last_item]))
+        log_correct_item += torch.log(torch.sigmoid(batch[item_index][last_item]) + 1e-24)
         mask_non_S[:, last_item] = 0
         loss -= (log_correct_item + torch.sum(mask_non_S * sums))
     return loss
