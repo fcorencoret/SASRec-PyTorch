@@ -36,21 +36,20 @@ def save_checkpoint(state, is_best, output_dir, model_name, filename='_checkpoin
         shutil.copyfile(checkpoint_path, model_path)
 
 def multiple_binary_cross_entropy(input, target, output, loss):
-    for sequence in range(len(output)):
-        # Clamp to avoid PyTorch -inf
-        sums = torch.log(torch.ones_like(output[sequence]) - torch.clamp(torch.sigmoid(output[sequence]), max=0.99999999999999))
-        mask_non_S = torch.ones_like(output[sequence])
+    for batch_index, batch in enumerate(output):
+        sums = torch.log(torch.ones_like(batch) - torch.sigmoid(batch) + 1e-24)
+        mask_non_S = torch.ones_like(batch)
 
         log_correct_item = 0
-        for item in range(len(input[sequence])):
-            if input[sequence][item] != 0:
-                mask_non_S[:, input[sequence][item]] = 0
-                log_correct_item += torch.log(torch.sigmoid(output[sequence][item][input[sequence][item]]))
+        for item_index, item in enumerate(input[batch_index]):
+            if item != 0:
+                mask_non_S[:, item] = 0
+                log_correct_item += torch.log(torch.sigmoid(batch[item_index][item]))
             else:
                 mask_non_S[item, :] = 0
         
-        last_item = target[sequence][-1]
-        log_correct_item += torch.log(torch.sigmoid(output[sequence][item][last_item]))
+        last_item = target[batch_index][-1]
+        log_correct_item += torch.log(torch.sigmoid(batch[item_index][last_item]))
         mask_non_S[:, last_item] = 0
         loss -= (log_correct_item + torch.sum(mask_non_S * sums))
     return loss
