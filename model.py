@@ -72,7 +72,7 @@ class SASRec(nn.Module):
 		self.all_items_embeddings = self.input_embedding.embedding(all_items).to(device)
 
 	def calculate_embedding_distances(self, batches):		
-		relevances = torch.zeros((batches.size(0), batches.size(1), self.all_items_embeddings.size(0)))
+		relevances = torch.zeros((batches.size(0), batches.size(1), self.all_items_embeddings.size(0))).to(device)
 		for index, batch in enumerate(batches):
 			relevances[index] = torch.mm(batch, self.all_items_embeddings.t())
 		return relevances
