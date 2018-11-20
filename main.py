@@ -10,11 +10,10 @@ import os
 
 ROOT_PATH = 'data'
 n = 50
-d = 300
+d = 50
 BATCH_SIZE = 16 if torch.cuda.is_available() else 2
 lr = 0.001
 num_epochs = 10 if torch.cuda.is_available() else 1
-resume = False
 start_epoch = 0
 print_freq = 2
 stride=None
@@ -22,9 +21,11 @@ best_loss = float('Inf')
 output_dir = 'checkpoints'
 model_name = 'SelfAttention'
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+store_train_loss = [2, 5]
+store_val_loss = [3, 4]
 
 def main():
-	global args, best_loss
+	global args, best_loss, start_epoch
 	args = parser.parse_args()
 	if args.n_epochs: num_epochs = args.n_epochs
 
@@ -51,8 +52,8 @@ def main():
 		n_items=train_loader.dataset.itemnum, 
 		d=d, 
 		n=n,
-		attention_stack=3,
-		ffn_hidden_dim=100,
+		attention_stack=2,
+		ffn_hidden_dim=n,
 		dropout=0.2).to(device)
 	print(" > Created the model")
 
@@ -74,6 +75,8 @@ def main():
 
 	print(" > Training is getting started...")
 	print(" > Training takes {} epochs.".format(num_epochs))
+	
+
 	for epoch in range(start_epoch, num_epochs):
 
 		# train for one epoch
@@ -84,6 +87,11 @@ def main():
 		print(" > Validation loss after epoch {} = {}".format(epoch, val_loss))
 
 
+		# store train and val loss
+		store_train_loss.append(train_loss)
+		store_val_loss.append(val_loss)
+
+
 		# remember best loss and save the checkpoint
 		is_best = val_loss < best_loss
 		best_loss = min(val_loss, best_loss)
@@ -92,7 +100,7 @@ def main():
 			'arch': "SelfAttention",
 			'state_dict': model.state_dict(),
 			'best_loss': best_loss,
-		}, is_best, output_dir, model_name)
+		}, is_best, output_dir, model_name, store_train_loss, store_val_loss)
 
 def train(train_loader, model, optimizer, epoch):
 	batch_time = AverageMeter()
@@ -190,6 +198,33 @@ def validate(val_loader, model, class_to_idx=None):
 			.format(top1=top1, top10=top10, nDCG10=nDCG10))
 
 	return losses.avg, top1.avg, top10.avg, nDCG10.avg
+
+import signal
+import sys
+def signal_handler(sig, frame):
+	import matplotlib.pyplot as plt
+	# Plot train and val data
+	fig, ax = plt.subplots( nrows=1, ncols=1 )
+	ax.set_title('Train and Val loss')
+	ax.set_xlabel('Epochs')
+	ax.set_ylabel('Loss')
+	ax.plot([],[], color='red', label='Train')
+	ax.plot([],[], color='green', label='Val')
+	ax.lines[0].set_xdata([i for i in range(len(store_train_loss))])
+	ax.lines[0].set_ydata(store_train_loss)
+	ax.lines[1].set_xdata([i for i in range(len(store_val_loss))])
+	ax.lines[1].set_ydata(store_val_loss)
+
+	# save plot
+	ax.legend()
+	ax.relim()
+	ax.autoscale_view()
+	fig.savefig(os.path.join(output_dir, model_name) + '_training.png')
+	plt.close(fig)
+
+	sys.exit(0)
+signal.signal(signal.SIGINT, signal_handler)
+
 
 if __name__ == '__main__':
 	main()
