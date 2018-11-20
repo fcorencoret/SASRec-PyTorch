@@ -2,7 +2,7 @@ from data_loader import MovieLensLoader
 from model import SASRec
 import torch
 from callbacks import AverageMeter
-from utils import accuracy, save_checkpoint, multiple_binary_cross_entropy
+from utils import accuracy, save_checkpoint, multiple_binary_cross_entropy, plot
 import time
 import torch.nn.functional as F
 from opts import parser
@@ -21,8 +21,8 @@ best_loss = float('Inf')
 output_dir = 'checkpoints'
 model_name = 'SelfAttention'
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-store_train_loss = [2, 5]
-store_val_loss = [3, 4]
+store_train_loss = []
+store_val_loss = []
 
 def main():
 	global args, best_loss, start_epoch
@@ -100,7 +100,10 @@ def main():
 			'arch': "SelfAttention",
 			'state_dict': model.state_dict(),
 			'best_loss': best_loss,
-		}, is_best, output_dir, model_name, store_train_loss, store_val_loss)
+		}, is_best, output_dir, model_name)
+
+	# plot training results
+	plot(store_train_loss, store_val_loss, output_dir, model_name)
 
 def train(train_loader, model, optimizer, epoch):
 	batch_time = AverageMeter()
@@ -202,28 +205,10 @@ def validate(val_loader, model, class_to_idx=None):
 import signal
 import sys
 def signal_handler(sig, frame):
-	import matplotlib.pyplot as plt
-	# Plot train and val data
-	fig, ax = plt.subplots( nrows=1, ncols=1 )
-	ax.set_title('Train and Val loss')
-	ax.set_xlabel('Epochs')
-	ax.set_ylabel('Loss')
-	ax.plot([],[], color='red', label='Train')
-	ax.plot([],[], color='green', label='Val')
-	ax.lines[0].set_xdata([i for i in range(len(store_train_loss))])
-	ax.lines[0].set_ydata(store_train_loss)
-	ax.lines[1].set_xdata([i for i in range(len(store_val_loss))])
-	ax.lines[1].set_ydata(store_val_loss)
-
-	# save plot
-	ax.legend()
-	ax.relim()
-	ax.autoscale_view()
-	fig.savefig(os.path.join(output_dir, model_name) + '_training.png')
-	plt.close(fig)
-
+	plot(store_train_loss, store_val_loss, output_dir, model_name)
 	sys.exit(0)
 signal.signal(signal.SIGINT, signal_handler)
+
 
 
 if __name__ == '__main__':

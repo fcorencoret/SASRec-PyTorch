@@ -135,7 +135,7 @@ class SASRec(nn.Module):
 		output = self.sequence_embedding(X)
 		
 		# Positional Encoding Embedding
-		pos_enc = self.positional_encoding_embedding(torch.Tensor([i for i in range(self.n)]))
+		pos_enc = self.positional_encoding_embedding(torch.Tensor([i for i in range(self.n)]).to(device))
 		output = output + pos_enc
 
 		# Apply dropout

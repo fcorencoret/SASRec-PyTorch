@@ -53,3 +53,24 @@ def multiple_binary_cross_entropy(input, target, output, loss):
         mask_non_S[:, last_item] = 0
         loss -= (log_correct_item + torch.sum(mask_non_S * sums))
     return loss
+
+def plot(store_train_loss, store_val_loss, output_dir, model_name):
+    import matplotlib.pyplot as plt
+    # Plot train and val data
+    fig, ax = plt.subplots( nrows=1, ncols=1 )
+    ax.set_title('Train and Val loss')
+    ax.set_xlabel('Epochs')
+    ax.set_ylabel('Loss')
+    ax.plot([],[], color='red', label='Train')
+    ax.plot([],[], color='green', label='Val')
+    ax.lines[0].set_xdata([i for i in range(len(store_train_loss))])
+    ax.lines[0].set_ydata(store_train_loss)
+    ax.lines[1].set_xdata([i for i in range(len(store_val_loss))])
+    ax.lines[1].set_ydata(store_val_loss)
+
+    # save plot
+    ax.legend()
+    ax.relim()
+    ax.autoscale_view()
+    fig.savefig(os.path.join(output_dir, model_name) + '_training.png')
+    plt.close(fig)
