@@ -36,23 +36,15 @@ def save_checkpoint(state, is_best, output_dir, model_name, filename='_checkpoin
         print(" > Best model found at this epoch. Saving ...")
         shutil.copyfile(checkpoint_path, model_path)
 
-def multiple_binary_cross_entropy(input, target, output, loss):
-    for batch_index, batch in enumerate(output):
-        sums = torch.log(torch.ones_like(batch) - torch.sigmoid(batch) + 1e-24)
-        mask_non_S = torch.ones_like(batch)
+def multiple_binary_cross_entropy(seq_emb, pos_emb, pos, neg_emb):
+    # Prediction layer
+    pos_logits = torch.sum(pos_emb * seq_emb, dim=-1)
+    neg_logits = torch.sum(neg_emb * seq_emb, dim=-1)
 
-        log_correct_item = 0
-        for item_index, item in enumerate(input[batch_index]):
-            if item != 0:
-                mask_non_S[:, item] = 0
-                log_correct_item += torch.log(torch.sigmoid(batch[item_index][item]) + 1e-24)
-            else:
-                mask_non_S[item, :] = 0
-        
-        last_item = target[batch_index][-1]
-        log_correct_item += torch.log(torch.sigmoid(batch[item_index][last_item]) + 1e-24)
-        mask_non_S[:, last_item] = 0
-        loss -= (log_correct_item + torch.sum(mask_non_S * sums))
+    # Calculate loss
+    istarget = ((pos.view(pos.size()[0] * pos.size()[1])) != 0).to(dtype=torch.float32)
+    loss = torch.sum(torch.log(torch.sigmoid(pos_logits) + 1e-24) * istarget - 
+                torch.log(1 - torch.sigmoid(neg_logits) + 1e-24) * istarget) / torch.sum(istarget)
     return loss
 
 def plot(store, output_dir, model_name):

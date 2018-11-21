@@ -8,7 +8,7 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 class EmbeddingLayer(nn.Module):
 	def __init__(self, n_items, d=300, n=50, scale=True, pos_enc=False):
 		super().__init__()
-		self.n_items = n_items
+		self.n_items = n_items if pos_enc else n_items + 1
 		self.d = d
 		self.n = n
 		self.embedding = nn.Embedding(self.n_items, self.d, padding_idx=None if pos_enc else 0).to(device)
@@ -103,9 +103,9 @@ class SASRec(nn.Module):
 		self.sequence_embedding = EmbeddingLayer(self.n_items, self.d, self.n)
 		self.positional_encoding_embedding = EmbeddingLayer(self.n, self.d, self.n, scale=False, pos_enc=True)
 		self.dropout = nn.Dropout(dropout).to(device)
-		self.attn_norm = nn.LayerNorm((self.n, self.d)).to(device)
-		self.ffn_norm = nn.LayerNorm((self.n, self.d)).to(device)
-		self.norm = nn.LayerNorm((self.n, self.d)).to(device)
+		self.attn_norm = nn.LayerNorm(self.d).to(device)
+		self.ffn_norm = nn.LayerNorm(self.d).to(device)
+		self.norm = nn.LayerNorm(self.d).to(device)
 
 		self.attention_stack = []
 		for i in range(attention_stack):
@@ -120,9 +120,13 @@ class SASRec(nn.Module):
 					ffn_hidden_dim=self.ffn_hidden_dim)
 			))
 
-	def embedding_lookup(self):
-		all_items = torch.tensor([i for i in range(self.n_items)], dtype=torch.long).to(device)
-		self.all_items_embeddings = self.sequence_embedding.embedding(all_items).to(device)
+	# def get_item_embedding_table(self):
+		# all_items = torch.tensor([i for i in range(self.n_items + 1)], dtype=torch.long).to(device)
+		# return self.sequence_embedding.embedding(all_items).to(device)
+
+	def embedding_lookup(self, seq):
+		return self.sequence_embedding.embedding(seq).to(device)
+
 
 	def calculate_embedding_distances(self, batches):		
 		relevances = torch.zeros((batches.size(0), batches.size(1), self.all_items_embeddings.size(0))).to(device)
@@ -130,9 +134,9 @@ class SASRec(nn.Module):
 			relevances[index] = torch.mm(batch, self.all_items_embeddings.t())
 		return relevances
 
-	def forward(self, X):
+	def forward(self, seq, pos, neg):
 		# Sequence Embedding
-		output = self.sequence_embedding(X)
+		output = self.sequence_embedding(seq)
 		
 		# Positional Encoding Embedding
 		pos_enc = self.positional_encoding_embedding(torch.Tensor([i for i in range(self.n)]).to(device))
@@ -142,19 +146,27 @@ class SASRec(nn.Module):
 		output = self.dropout(output)
 
 		# Apply Padding mask
-		padding_mask = (X != 0).to(device, dtype=torch.float32)
+		padding_mask = (seq != 0).to(device, dtype=torch.float32)
 		output = output * padding_mask.unsqueeze(-1).expand_as(output)
 
+		# Attention Blocks
 		for (attention_block, point_wise) in self.attention_stack:
 			output = attention_block(self.attn_norm(output), output, padding_mask)
 			output = point_wise(self.ffn_norm(output))
 			output = output * padding_mask.unsqueeze(-1).expand_as(output)
 
-		output = self.norm(output)
+		# Normalization 
+		seq_emb = self.norm(output)
 
-		self.embedding_lookup()
-		relevances = self.calculate_embedding_distances(output)
-		return relevances
+		# Expand to size (batch_size * self.n, self.d) for later dot product
+		seq_emb = seq_emb.view(seq_emb.size()[0] * seq_emb.size()[1], -1)
+		pos = pos.view(pos.size()[0] * pos.size()[1])
+		neg = neg.view(neg.size()[0] * neg.size()[1])
+		
+		# Embedding lookup from item_emb_table
+		pos_emb = self.embedding_lookup(pos)
+		neg_emb = self.embedding_lookup(neg)
+		return seq_emb, pos_emb, neg_emb
 
 
 

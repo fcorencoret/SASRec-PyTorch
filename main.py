@@ -136,7 +136,7 @@ def train(train_loader, model, optimizer, epoch):
 	model.train()
 
 	end = time.time()
-	for i , (input , target) in enumerate(train_loader):
+	for i , (seq , pos, neg) in enumerate(train_loader):
 
 		# measure data loading time
 		data_time.update(time.time() - end)
@@ -145,15 +145,14 @@ def train(train_loader, model, optimizer, epoch):
 		model.zero_grad()
 
 		# compute output and loss
-		loss = torch.zeros(1).to(device)
-		output = model(input)
-		loss = multiple_binary_cross_entropy(input, target, output, loss)	
+		seq_emb, pos_emb, neg_emb = model(seq, pos, neg)
+		loss = multiple_binary_cross_entropy(seq_emb, pos_emb, pos, neg_emb).to(device)	
 		# measure accuracy and record loss
-		prec1, prec10, nDCG = accuracy(output, target, topk=(1, 10))
-		losses.update(loss.item(), input.size(0))
-		top1.update(prec1.item(), input.size(0))
-		top10.update(prec10.item(), input.size(0))
-		nDCG10.update(nDCG, input.size(0))
+		prec1, prec10, nDCG = accuracy(seq_emb, pos, topk=(1, 10))
+		losses.update(loss.item(), seq.size(0))
+		top1.update(prec1.item(), seq.size(0))
+		top10.update(prec10.item(), seq.size(0))
+		nDCG10.update(nDCG, seq.size(0))
 
 		# compute gradient and do SGD step
 		optimizer.zero_grad()
@@ -189,19 +188,18 @@ def validate(val_loader, model, class_to_idx=None):
 
 	end = time.time()
 	with torch.no_grad():
-		for i, (input, target) in enumerate(val_loader):
+		for i, (seq, pos, neg) in enumerate(val_loader):
 		
 			# compute output and loss
-			loss = torch.zeros(1).to(device)
-			output = model(input)
-			loss = multiple_binary_cross_entropy(input, target, output, loss)	
+			seq_emb, pos_emb, neg_emb = model(seq, pos, neg)
+			loss = multiple_binary_cross_entropy(seq_emb, pos_emb, pos, neg_emb).to(device)	
 
 			# measure accuracy and record loss
-			prec1, prec10, nDCG = accuracy(output, target, topk=(1, 10))
-			losses.update(loss.item(), input.size(0))
-			top1.update(prec1.item(), input.size(0))
-			top10.update(prec10.item(), input.size(0))
-			nDCG10.update(nDCG, input.size(0))
+			prec1, prec10, nDCG = accuracy(output, pos, topk=(1, 10))
+			losses.update(loss.item(), seq.size(0))
+			top1.update(prec1.item(), seq.size(0))
+			top10.update(prec10.item(), seq.size(0))
+			nDCG10.update(nDCG, seq.size(0))
 
 			# measure elapsed time
 			batch_time.update(time.time() - end)
