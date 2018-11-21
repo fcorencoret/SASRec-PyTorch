@@ -7,6 +7,7 @@ import time
 import torch.nn.functional as F
 from opts import parser
 import os
+import numpy as np
 
 ROOT_PATH = 'data'
 n = 50
@@ -21,8 +22,17 @@ best_loss = float('Inf')
 output_dir = 'checkpoints'
 model_name = 'SelfAttention'
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-store_train_loss = []
-store_val_loss = []
+store = {
+	'train_loss' : [],
+	'val_loss' : [],
+	'train_hitrate@1' : [],
+	'train_hitrate@10' : [],
+	'train_ndcg@10' : [],
+	'val_hitrate@1' : [],
+	'val_hitrate@10' : [],
+	'val_ndcg@10' : [],
+}
+
 
 def main():
 	global args, best_loss, start_epoch
@@ -64,6 +74,10 @@ def main():
 			checkpoint = torch.load(args.resume)
 			start_epoch = checkpoint['epoch']
 			num_epochs += start_epoch
+
+			# Load data from previous training
+			with open(os.path.join(output_dir, model_name) + '_data.json', 'r') as fp:
+				store = json.load(fp)
 			# best_prec1 = checkpoint['best_prec1']
 			model.load_state_dict(checkpoint['state_dict'])
 			print("=> loaded checkpoint (epoch {})"
@@ -84,14 +98,19 @@ def main():
 		train_loss, train_top1, train_top10, train_nDCG10 = train(train_loader, model, optimizer, epoch)
 
 		# evaluate on validation set
-		val_loss, val_top1, val_top10, train_nDCG10 = validate(val_loader, model)
+		val_loss, val_top1, val_top10, val_nDCG10 = validate(val_loader, model)
 		print(" > Validation loss after epoch {} = {}".format(epoch, val_loss))
 
 
 		# store train and val loss
-		store_train_loss.append(train_loss)
-		store_val_loss.append(val_loss)
-
+		store['train_loss'].append(train_loss)
+		store['val_loss'].append(val_loss)
+		store['train_hitrate@1'].append(train_top1)
+		store['train_hitrate@10'].append(train_top10)
+		store['train_ndcg@10'].append(train_nDCG10)
+		store['val_hitrate@1'].append(val_top1)
+		store['val_hitrate@10'].append(val_top10)
+		store['val_ndcg@10'].append(val_nDCG10)
 
 		# remember best loss and save the checkpoint
 		is_best = val_loss < best_loss
@@ -104,7 +123,7 @@ def main():
 		}, is_best, output_dir, model_name)
 
 	# plot training results
-	plot(store_train_loss, store_val_loss, output_dir, model_name)
+	plot(store, output_dir, model_name)
 
 def train(train_loader, model, optimizer, epoch):
 	batch_time = AverageMeter()
@@ -206,7 +225,7 @@ def validate(val_loader, model, class_to_idx=None):
 import signal
 import sys
 def signal_handler(sig, frame):
-	plot(store_train_loss, store_val_loss, output_dir, model_name)
+	plot(store, output_dir, model_name)
 	sys.exit(0)
 signal.signal(signal.SIGINT, signal_handler)
 

@@ -2,6 +2,7 @@ import os
 import torch
 import shutil
 import numpy as np
+import json
 
 def accuracy(output, target, topk=(1,), nDCG=10):
     """Computes the precision@k for the specified values of k"""
@@ -54,23 +55,47 @@ def multiple_binary_cross_entropy(input, target, output, loss):
         loss -= (log_correct_item + torch.sum(mask_non_S * sums))
     return loss
 
-def plot(store_train_loss, store_val_loss, output_dir, model_name):
+def plot(store, output_dir, model_name):
     import matplotlib.pyplot as plt
     # Plot train and val data
-    fig, ax = plt.subplots( nrows=1, ncols=1 )
-    ax.set_title('Train and Val loss')
-    ax.set_xlabel('Epochs')
-    ax.set_ylabel('Loss')
-    ax.plot([],[], color='red', label='Train')
-    ax.plot([],[], color='green', label='Val')
-    ax.lines[0].set_xdata([i for i in range(len(store_train_loss))])
-    ax.lines[0].set_ydata(store_train_loss)
-    ax.lines[1].set_xdata([i for i in range(len(store_val_loss))])
-    ax.lines[1].set_ydata(store_val_loss)
 
-    # save plot
-    ax.legend()
-    ax.relim()
-    ax.autoscale_view()
+    def plot_ax(ax, title, xdata1, xdata2):
+        # Losses ax1
+        ax.set_title(title)
+        ax.set_xlabel('Epochs')
+        ax.set_ylabel(title)
+        ax.plot([],[], color='red', label='Train')
+        ax.plot([],[], color='green', label='Val')
+        ax.lines[0].set_xdata([i for i in range(len(xdata1))])
+        ax.lines[0].set_ydata(xdata1)
+        ax.lines[1].set_xdata([i for i in range(len(xdata2))])
+        ax.lines[1].set_ydata(xdata2)
+        ax.legend()
+        ax.relim()
+        ax.autoscale_view()
+        return ax
+
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots( nrows=2, ncols=2, figsize=(10, 10) )
+    
+    # Losses ax1
+    ax1 = plot_ax(ax1, 'Loss', store['train_loss'], store['val_loss'])
+
+    # HitRate@1 ax2
+    ax2 = plot_ax(ax2, 'HitRate@1', store['train_hitrate@1'], store['val_hitrate@1'])
+
+    # HitRate@10 ax3
+    ax3 = plot_ax(ax3, 'HitRate@10', store['train_hitrate@10'], store['val_hitrate@10'])    
+
+    # nDCG@10 ax4
+    ax4 = plot_ax(ax4, 'nDCG@10', store['train_ndcg@10'], store['val_ndcg@10'])
+
+    # save plot    
     fig.savefig(os.path.join(output_dir, model_name) + '_training.png')
     plt.close(fig)
+
+    print(' > Training data plotted')
+
+    with open(os.path.join(output_dir, model_name) + '_data.json', 'w') as fp:
+        json.dump(store, fp)
+
+    print(' > Training data saved')
