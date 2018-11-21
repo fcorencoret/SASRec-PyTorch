@@ -2,6 +2,7 @@ import torch.utils.data as data
 import preprocess_dataset
 import json
 import torch
+import numpy as np
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 class MovieLensLoader(data.Dataset):
@@ -65,21 +66,24 @@ class MovieLensLoader(data.Dataset):
 				x[self.n - n_ratings + 1: ] = torch.LongTensor(user_reviews[:-1])	
 				y[self.n - n_ratings + 1: ] = torch.LongTensor(user_reviews[1:])	
 
+			neg = self._get_negative_indices(self.n - n_ratings + 1)
 			self._next_user()
-			return (x.to(device), y.to(device))
+			return (x.to(device), y.to(device), neg.to(device))
 
 		elif self.current_item > 0:
 			x = torch.LongTensor(user_reviews[self.current_item: self.current_item + self.n])
 			y = torch.LongTensor(user_reviews[self.current_item + 1: self.current_item + self.n + 1])
+			neg = self._get_negative_indices()
 			if self.stride: self.current_item -= self.stride
 			else: self._next_user()
-			return (x.to(device), y.to(device))
+			return (x.to(device), y.to(device), neg.to(device))
 
 		elif self.current_item == 0:
 			x = torch.LongTensor(user_reviews[self.current_item: self.current_item + self.n])
 			y = torch.LongTensor(user_reviews[self.current_item + 1: self.current_item + self.n + 1])
+			neg = self._get_negative_indices()
 			self._next_user()
-			return (x.to(device), y.to(device))
+			return (x.to(device), y.to(device), neg.to(device))
 
 	def _next_user(self):
 		if self.current_user == self.usernum: self._reset_current_indices()
@@ -120,6 +124,15 @@ class MovieLensLoader(data.Dataset):
 		self.current_user = 1
 		self.current_item = len(self.user_train[self.current_user]) - self.n - 1
 
+	def _get_negative_indices(self, start_index=0):
+		neg = torch.zeros(self.n).long()
+		user_items = set(self.user_train[self.current_user])
+		for i in range(start_index, self.n):
+			t = np.random.randint(1, self.itemnum + 1)
+			while t in user_items:
+				t = np.random.randint(1, self.itemnum + 1)
+			neg[i] = t
+		return neg
 
 	def __len__(self):
 		return self.total_data
