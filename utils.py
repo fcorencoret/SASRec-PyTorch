@@ -49,13 +49,13 @@ def multiple_binary_cross_entropy(seq_emb, pos_emb, pos, neg_emb):
 
 def accuracy(test_logits):
     hitrate1, hitrate10, ndcg10 = 0, 0, 0
-    rank = torch.sort(torch.sort(test_logits)[1])[1][0][0]
+    rank = torch.sort(torch.sort(test_logits)[1])[1][0]
     if rank == 0:
         hitrate1 = 1
-    elif rank < 10:
-        hitrate1 = 1
         hitrate10 = 1
-        NDCG = 1 / np.log2(rank + 2)
+    elif rank < 10:
+        hitrate10 = 1
+        ndcg10 = 1 / np.log2(rank + 2)
     return hitrate1, hitrate10, ndcg10 
 
 
@@ -70,11 +70,11 @@ def plot(store, output_dir, model_name):
         ax.set_xlabel('Epochs')
         ax.set_ylabel(title)
         ax.plot([],[], color='red', label='Train')
-        ax.lines[0].set_xdata([i for i in range(len(xdata1))])
+        ax.lines[0].set_xdata([i * 20 for i in range(len(xdata1))])
         ax.lines[0].set_ydata(xdata1)
         if xdata2:
             ax.plot([],[], color='green', label='Val')
-            ax.lines[1].set_xdata([i for i in range(len(xdata2))])
+            ax.lines[1].set_xdata([i * 20 for i in range(len(xdata2))])
             ax.lines[1].set_ydata(xdata2)
         ax.legend()
         ax.relim()

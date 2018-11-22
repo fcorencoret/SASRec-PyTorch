@@ -28,12 +28,12 @@ class MovieLensLoader(data.Dataset):
 			if self.dataset == 'train_eval' or self.dataset == 'val_eval' or self.dataset == 'test_eval':
 				self.total_data = len(self.user_train)
 
-		if self.dataset == 'val' or self.dataset == 'test':
+		if self.dataset == 'val_eval' or self.dataset == 'test_eval':
 			with open('%s/user_val.json'%self.root_path, 'r') as infile:
 				self.user_val = json.load(infile)
 				self.user_val = {int(k):[int(i) for i in v] for k,v in self.user_val.items()}
 	
-		if self.dataset == 'test':
+		if self.dataset == 'test_eval':
 			with open('%s/user_test.json'%self.root_path, 'r') as infile:
 				self.user_test = json.load(infile)
 				self.user_test = {int(k):[int(i) for i in v] for k,v in self.user_test.items()}
@@ -100,7 +100,7 @@ class MovieLensLoader(data.Dataset):
 			if self.dataset == 'train_eval': seq = torch.LongTensor(self.user_train[idx][n_ratings - self.n - 1 : -1])
 			else: seq = torch.LongTensor(self.user_train[idx][n_ratings - self.n : ])
 		else:
-			if self.dataset == 'train_eval': seq[self.n - n_ratings - 1: ] = torch.LongTensor(self.user_train[idx])
+			if self.dataset == 'train_eval': seq[self.n - n_ratings + 1: ] = torch.LongTensor(self.user_train[idx][: -1])
 			else: seq[self.n - n_ratings: ] = torch.LongTensor(self.user_train[idx])
 			
 		user_items = set(self.user_train[idx])
@@ -118,7 +118,7 @@ class MovieLensLoader(data.Dataset):
 
 		if self.dataset == 'test_eval':
 			item_idx[0] = self.user_test[idx][0]
-			seq[ :-1] = x[1: ]
+			seq[ :-1] = seq[1: ]
 			seq[-1] = self.user_val[idx][0]			
 		return (seq.to(device), item_idx.to(device))
 

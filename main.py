@@ -12,14 +12,14 @@ import json
 ROOT_PATH = 'data'
 n = 50
 d = 50
-BATCH_SIZE = 16 if torch.cuda.is_available() else 2
+BATCH_SIZE = 128 if torch.cuda.is_available() else 2
 lr = 0.001
 num_epochs = 350 if torch.cuda.is_available() else 1
 start_epoch = 0
 print_freq = 2
-eval_freq = 1
+eval_freq = 20
 stride = None
-best_loss = float('Inf')
+best_loss = 0
 output_dir = 'checkpoints'
 model_name = 'SelfAttention'
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -115,7 +115,6 @@ def main():
 		# train for one epoch
 		train_loss = train(train_loader, model, optimizer, epoch)
 
-
 		# Evaluate the model
 		if epoch % eval_freq == 0:
 			train_top1, train_top10, train_nDCG10 = evaluate(train_eval, model, epoch, 'Training')
@@ -125,13 +124,13 @@ def main():
 			store['train_loss'].append(train_loss)
 			store['train_hitrate@1'].append(train_top1)
 			store['train_hitrate@10'].append(train_top10)
-			store['train_ndcg@10'].append(train_nDCG10)
+			store['train_ndcg@10'].append(train_nDCG10.item())
 			store['val_hitrate@1'].append(val_top1)
 			store['val_hitrate@10'].append(val_top10)
-			store['val_ndcg@10'].append(val_nDCG10)
+			store['val_ndcg@10'].append(val_nDCG10.item())
 
 			# remember best loss and save the checkpoint
-			is_best = val_top10 < best_loss
+			is_best = val_top10 > best_loss
 			best_loss = min(val_top10, best_loss)
 			save_checkpoint({
 				'epoch': epoch + 1,
@@ -148,6 +147,16 @@ def main():
 	test_top1, test_top10, test_nDCG10 = evaluate(test_eval, model, epoch, 'Test')
 	# plot training results
 	plot(store, output_dir, model_name)
+
+	# remember best loss and save the checkpoint
+	is_best = val_top10 > best_loss
+	best_loss = min(val_top10, best_loss)
+	save_checkpoint({
+		'epoch': epoch + 1,
+		'arch': "SelfAttention",
+		'state_dict': model.state_dict(),
+		'best_loss': best_loss,
+	}, is_best, output_dir, model_name)
 
 def train(train_loader, model, optimizer, epoch):
 	batch_time = AverageMeter()
@@ -203,7 +212,7 @@ def evaluate(data_eval, model, epoch, eval):
 			# compute output and loss
 			seq_emb, test_emb = model(seq, item_idx, predict=True)
 			test_logits = torch.matmul(seq_emb, test_emb.t())
-			test_logits = test_logits.view(seq.size()[0], seq.size()[1], 101)[:, -1, :]
+			test_logits = -test_logits.view(seq.size()[0], seq.size()[1], 101)[:, -1, :][0]
 			prec1, prec10, nDCG = accuracy(test_logits)
 
 			# update metrics
