@@ -207,8 +207,8 @@ def evaluate(data_eval, model, epoch, eval):
 			prec1, prec10, nDCG = accuracy(test_logits)
 
 			# update metrics
-			top1.update(prec1.item(), 1)
-			top10.update(prec10.item(), 1)
+			top1.update(prec1, 1)
+			top10.update(prec10, 1)
 			nDCG10.update(nDCG, 1)
 
 	print('-- {eval} Results Epoch [{epoch}] -- \t'

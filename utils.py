@@ -49,8 +49,7 @@ def multiple_binary_cross_entropy(seq_emb, pos_emb, pos, neg_emb):
 
 def accuracy(test_logits):
     hitrate1, hitrate10, ndcg10 = 0, 0, 0
-    rank = torch.sort(torch.sort(test_logits)[1])[1][0]
-    print(rank)
+    rank = torch.sort(torch.sort(test_logits)[1])[1][0][0]
     if rank == 0:
         hitrate1 = 1
     elif rank < 10:
