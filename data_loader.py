@@ -46,44 +46,45 @@ class MovieLensLoader(data.Dataset):
 
 	def __getitem__(self, index):
 
-		if self.dataset == 'val' or self.dataset == 'test': return self._getitem_val_test(index)
+		if self.dataset == 'train_eval' or self.dataset == 'val_eval' or self.dataset == 'test_eval':
+			return self._getitem_val_test(index)
 
 		user_reviews = self.user_train[self.current_user]
 		n_user_reviews = len(user_reviews)
 
 		if self.current_item < 0:
-			x = torch.zeros(self.n).long()		
-			y = torch.zeros(self.n).long()		
+			seq = torch.zeros(self.n).long()		
+			pos= torch.zeros(self.n).long()		
 			n_ratings = len(self.user_train[self.current_user])
 			
 			# window slide option
 			if n_ratings >= self.n + 1: 
 				n_ratings = self.n + self.current_item	
-				x[self.n - n_ratings + 1: ] = torch.LongTensor(user_reviews[:n_ratings - 1])	
-				y[self.n - n_ratings + 1: ] = torch.LongTensor(user_reviews[1 :n_ratings])
+				seq[self.n - n_ratings + 1: ] = torch.LongTensor(user_reviews[:n_ratings - 1])	
+				pos[self.n - n_ratings + 1: ] = torch.LongTensor(user_reviews[1 :n_ratings])
 
 			else: 
-				x[self.n - n_ratings + 1: ] = torch.LongTensor(user_reviews[:-1])	
-				y[self.n - n_ratings + 1: ] = torch.LongTensor(user_reviews[1:])	
+				seq[self.n - n_ratings + 1: ] = torch.LongTensor(user_reviews[:-1])	
+				pos[self.n - n_ratings + 1: ] = torch.LongTensor(user_reviews[1:])	
 
 			neg = self._get_negative_indices(self.n - n_ratings + 1)
 			self._next_user()
-			return (x.to(device), y.to(device), neg.to(device))
+			return (seq.to(device), pos.to(device), neg.to(device))
 
 		elif self.current_item > 0:
-			x = torch.LongTensor(user_reviews[self.current_item: self.current_item + self.n])
-			y = torch.LongTensor(user_reviews[self.current_item + 1: self.current_item + self.n + 1])
+			seq = torch.LongTensor(user_reviews[self.current_item: self.current_item + self.n])
+			pos = torch.LongTensor(user_reviews[self.current_item + 1: self.current_item + self.n + 1])
 			neg = self._get_negative_indices()
 			if self.stride: self.current_item -= self.stride
 			else: self._next_user()
-			return (x.to(device), y.to(device), neg.to(device))
+			return (seq.to(device), pos.to(device), neg.to(device))
 
 		elif self.current_item == 0:
-			x = torch.LongTensor(user_reviews[self.current_item: self.current_item + self.n])
-			y = torch.LongTensor(user_reviews[self.current_item + 1: self.current_item + self.n + 1])
+			seq = torch.LongTensor(user_reviews[self.current_item: self.current_item + self.n])
+			pos = torch.LongTensor(user_reviews[self.current_item + 1: self.current_item + self.n + 1])
 			neg = self._get_negative_indices()
 			self._next_user()
-			return (x.to(device), y.to(device), neg.to(device))
+			return (seq.to(device), pos.to(device), neg.to(device))
 
 	def _next_user(self):
 		if self.current_user == self.usernum: self._reset_current_indices()
@@ -93,32 +94,33 @@ class MovieLensLoader(data.Dataset):
 
 	def _getitem_val_test(self, index):
 		idx = index + 1
-		x = torch.zeros(self.n).long()
-		y = torch.zeros(self.n).long()
+		seq = torch.zeros(self.n).long()
 		n_ratings = len(self.user_train[idx])
 		if n_ratings >= self.n + 1:
-			x = torch.LongTensor(self.user_train[idx][n_ratings - self.n - 1 : -1])
-			y = torch.LongTensor(self.user_train[idx][n_ratings - self.n: ])
+			if self.dataset == 'train_eval': seq = torch.LongTensor(self.user_train[idx][n_ratings - self.n - 1 : -1])
+			else: seq = torch.LongTensor(self.user_train[idx][n_ratings - self.n : ])
 		else:
-			x[self.n - n_ratings + 1: ] = torch.LongTensor(self.user_train[idx][:-1])
-			y[self.n - n_ratings + 1: ] = torch.LongTensor(self.user_train[idx][1:])
-		
+			if self.dataset == 'train_eval': seq[self.n - n_ratings - 1: ] = torch.LongTensor(self.user_train[idx])
+			else: seq[self.n - n_ratings: ] = torch.LongTensor(self.user_train[idx])
+			
+		user_items = set(self.user_train[idx])
+		item_idx = torch.zeros(101).long()
+		for i in range(1, 101):
+			t = np.random.randint(1, self.itemnum + 1)
+			while t in user_items: t = np.random.randint(1, self.itemnum + 1)
+			item_idx[i] = t
 
-		if self.dataset == 'val': 
-			x[:-1] = x[1:]
-			x[-1] = self.user_train[idx][-1]
-			y[:-1] = y[1:]
-			y[-1] = self.user_val[idx][0]
+		if self.dataset == 'train_eval':
+			item_idx[0] = self.user_train[idx][-1]
 
-		if self.dataset == 'test': 
-			x[:-2] = x[2:]
-			x[-2] = self.user_train[idx][-1]
-			x[-1] = self.user_val[idx][0]
-			y[:-2] = y[2:]
-			y[-2] = self.user_val[idx][0]
-			y[-1] = self.user_test[idx][0]
+		if self.dataset == 'val_eval':
+			item_idx[0] = self.user_val[idx][0]
 
-		return (x.to(device), y.to(device))
+		if self.dataset == 'test_eval':
+			item_idx[0] = self.user_test[idx][0]
+			seq[ :-1] = x[1: ]
+			seq[-1] = self.user_val[idx][0]			
+		return (seq.to(device), item_idx.to(device))
 
 	def _reset_current_indices(self):
 		self.current_user = 1
@@ -129,8 +131,7 @@ class MovieLensLoader(data.Dataset):
 		user_items = set(self.user_train[self.current_user])
 		for i in range(start_index, self.n):
 			t = np.random.randint(1, self.itemnum + 1)
-			while t in user_items:
-				t = np.random.randint(1, self.itemnum + 1)
+			while t in user_items: t = np.random.randint(1, self.itemnum + 1)
 			neg[i] = t
 		return neg
 

@@ -134,7 +134,7 @@ class SASRec(nn.Module):
 			relevances[index] = torch.mm(batch, self.all_items_embeddings.t())
 		return relevances
 
-	def forward(self, seq, pos, neg):
+	def forward(self, seq, pos, neg=None, predict=False):
 		# Sequence Embedding
 		output = self.sequence_embedding(seq)
 		
@@ -160,12 +160,16 @@ class SASRec(nn.Module):
 
 		# Expand to size (batch_size * self.n, self.d) for later dot product
 		seq_emb = seq_emb.view(seq_emb.size()[0] * seq_emb.size()[1], -1)
-		pos = pos.view(pos.size()[0] * pos.size()[1])
-		neg = neg.view(neg.size()[0] * neg.size()[1])
-		
+
 		# Embedding lookup from item_emb_table
+		pos = pos.view(pos.size()[0] * pos.size()[1])
 		pos_emb = self.embedding_lookup(pos)
+		if predict: return seq_emb, pos_emb
+
+		# Embedding lookup from item_emb_table
+		neg = neg.view(neg.size()[0] * neg.size()[1])
 		neg_emb = self.embedding_lookup(neg)
+		
 		return seq_emb, pos_emb, neg_emb
 
 

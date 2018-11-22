@@ -7,24 +7,24 @@ import time
 import torch.nn.functional as F
 from opts import parser
 import os
-import numpy as np
+import json
 
 ROOT_PATH = 'data'
 n = 50
 d = 50
 BATCH_SIZE = 16 if torch.cuda.is_available() else 2
 lr = 0.001
-num_epochs = 10 if torch.cuda.is_available() else 1
+num_epochs = 350 if torch.cuda.is_available() else 1
 start_epoch = 0
 print_freq = 2
-stride=None
+eval_freq = 20
+stride = None
 best_loss = float('Inf')
 output_dir = 'checkpoints'
 model_name = 'SelfAttention'
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 store = {
 	'train_loss' : [],
-	'val_loss' : [],
 	'train_hitrate@1' : [],
 	'train_hitrate@10' : [],
 	'train_ndcg@10' : [],
@@ -35,7 +35,7 @@ store = {
 
 
 def main():
-	global args, best_loss, start_epoch
+	global args, best_loss, start_epoch, store
 	args = parser.parse_args()
 	if args.n_epochs: num_epochs = args.n_epochs
 
@@ -47,15 +47,33 @@ def main():
 			stride=stride),
 		batch_size=BATCH_SIZE)
 
-	val_loader = torch.utils.data.DataLoader(
+	# train eval
+	train_eval = torch.utils.data.DataLoader(
 		MovieLensLoader(ROOT_PATH, 
-			dataset='val',
+			dataset='train_eval',
 			n=n),
-		batch_size=BATCH_SIZE)
+		batch_size=1)
+
+	# val eval
+	val_eval = torch.utils.data.DataLoader(
+		MovieLensLoader(ROOT_PATH, 
+			dataset='val_eval',
+			n=n),
+		batch_size=1)
+
+	# test eval
+	test_eval = torch.utils.data.DataLoader(
+		MovieLensLoader(ROOT_PATH, 
+			dataset='test_eval',
+			n=n),
+		batch_size=1)
+
+
 
 	print(" > Loaded the data")
 	print(" > Train length: {}".format(len(train_loader)))
-	print(" > Val length: {}".format(len(val_loader)))
+	print(" > Val length: {}".format(len(val_eval)))
+	print(" > Test length: {}".format(len(test_eval)))
 
 	# create model
 	model = SASRec(
@@ -78,7 +96,7 @@ def main():
 			# Load data from previous training
 			with open(os.path.join(output_dir, model_name) + '_data.json', 'r') as fp:
 				store = json.load(fp)
-			# best_prec1 = checkpoint['best_prec1']
+			best_loss = store['val_hitrate@10'][-1]
 			model.load_state_dict(checkpoint['state_dict'])
 			print("=> loaded checkpoint (epoch {})"
 			      .format(checkpoint['epoch']))
@@ -90,38 +108,43 @@ def main():
 
 	print(" > Training is getting started...")
 	print(" > Training takes {} epochs.".format(num_epochs))
-	
 
 	for epoch in range(start_epoch, num_epochs):
 
 		# train for one epoch
-		train_loss, train_top1, train_top10, train_nDCG10 = train(train_loader, model, optimizer, epoch)
-
-		# evaluate on validation set
-		val_loss, val_top1, val_top10, val_nDCG10 = validate(val_loader, model)
-		print(" > Validation loss after epoch {} = {}".format(epoch, val_loss))
+		train_loss = train(train_loader, model, optimizer, epoch)
 
 
-		# store train and val loss
-		store['train_loss'].append(train_loss)
-		store['val_loss'].append(val_loss)
-		store['train_hitrate@1'].append(train_top1)
-		store['train_hitrate@10'].append(train_top10)
-		store['train_ndcg@10'].append(train_nDCG10)
-		store['val_hitrate@1'].append(val_top1)
-		store['val_hitrate@10'].append(val_top10)
-		store['val_ndcg@10'].append(val_nDCG10)
+		# Evaluate the model
+		if epoch % eval_freq == 0:
+			train_top1, train_top10, train_nDCG10 = evaluate(train_eval, model, epoch, 'Training')
+			val_top1, val_top10, val_nDCG10 = evaluate(val_eval, model, epoch, 'Validation')
 
-		# remember best loss and save the checkpoint
-		is_best = val_loss < best_loss
-		best_loss = min(val_loss, best_loss)
-		save_checkpoint({
-			'epoch': epoch + 1,
-			'arch': "SelfAttention",
-			'state_dict': model.state_dict(),
-			'best_loss': best_loss,
-		}, is_best, output_dir, model_name)
+			# store train and val loss
+			store['train_loss'].append(train_loss)
+			store['train_hitrate@1'].append(train_top1)
+			store['train_hitrate@10'].append(train_top10)
+			store['train_ndcg@10'].append(train_nDCG10)
+			store['val_hitrate@1'].append(val_top1)
+			store['val_hitrate@10'].append(val_top10)
+			store['val_ndcg@10'].append(val_nDCG10)
 
+			# remember best loss and save the checkpoint
+			is_best = val_top10 < best_loss
+			best_loss = min(val_top10, best_loss)
+			save_checkpoint({
+				'epoch': epoch + 1,
+				'arch': "SelfAttention",
+				'state_dict': model.state_dict(),
+				'best_loss': best_loss,
+			}, is_best, output_dir, model_name)
+
+			# Early Stopping
+			if not is_best: break
+
+
+	# Evaluate on test set
+	test_top1, test_top10, test_nDCG10 = evaluate(test_eval, model, epoch, 'Test')
 	# plot training results
 	plot(store, output_dir, model_name)
 
@@ -129,9 +152,6 @@ def train(train_loader, model, optimizer, epoch):
 	batch_time = AverageMeter()
 	data_time = AverageMeter()
 	losses = AverageMeter()
-	top1 = AverageMeter()
-	top10 = AverageMeter()
-	nDCG10 = AverageMeter()
 
 	model.train()
 
@@ -148,12 +168,8 @@ def train(train_loader, model, optimizer, epoch):
 		seq_emb, pos_emb, neg_emb = model(seq, pos, neg)
 		loss = multiple_binary_cross_entropy(seq_emb, pos_emb, pos, neg_emb).to(device)	
 		# measure accuracy and record loss
-		prec1, prec10, nDCG = accuracy(seq_emb, pos, topk=(1, 10))
 		losses.update(loss.item(), seq.size(0))
-		top1.update(prec1.item(), seq.size(0))
-		top10.update(prec10.item(), seq.size(0))
-		nDCG10.update(nDCG, seq.size(0))
-
+		
 		# compute gradient and do SGD step
 		optimizer.zero_grad()
 		loss.backward()
@@ -167,18 +183,13 @@ def train(train_loader, model, optimizer, epoch):
 			print('Epoch: [{0}][{1}/{2}]\t'
 				'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
 				'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
-				'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-				'HitRate@1 {top1.val:.3f} ({top1.avg:.3f})\t'
-				'HitRate@10 {top10.val:.3f} ({top10.avg:.3f})\t'
-				'nDCG@10 {nDCG10.val:.3f} ({nDCG10.avg:.3f})'.format(
+				'Loss {loss.val:.4f} ({loss.avg:.4f})\t'.format(
 					epoch, i, len(train_loader), batch_time=batch_time,
-					data_time=data_time, loss=losses, top1=top1, top10=top10, nDCG10=nDCG10))
+					data_time=data_time, loss=losses))
 
-	return losses.avg, top1.avg, top10.avg, nDCG10.avg
+	return losses.avg
 
-def validate(val_loader, model, class_to_idx=None):
-	batch_time = AverageMeter()
-	losses = AverageMeter()
+def evaluate(data_eval, model, epoch, eval):
 	top1 = AverageMeter()
 	top10 = AverageMeter()
 	nDCG10 = AverageMeter()
@@ -186,39 +197,23 @@ def validate(val_loader, model, class_to_idx=None):
 	# switch to evaluate mode
 	model.eval()
 
-	end = time.time()
 	with torch.no_grad():
-		for i, (seq, pos, neg) in enumerate(val_loader):
-		
+		for i, (seq, item_idx) in enumerate(data_eval):
 			# compute output and loss
-			seq_emb, pos_emb, neg_emb = model(seq, pos, neg)
-			loss = multiple_binary_cross_entropy(seq_emb, pos_emb, pos, neg_emb).to(device)	
+			seq_emb, test_emb = model(seq, item_idx, predict=True)
+			test_logits = torch.matmul(seq_emb, test_emb.t())
+			test_logits = test_logits.view(seq.size()[0], seq.size()[1], 101)[:, -1, :]
+			prec1, prec10, nDCG = accuracy(test_logits, topk=(1, 10))
 
-			# measure accuracy and record loss
-			prec1, prec10, nDCG = accuracy(output, pos, topk=(1, 10))
-			losses.update(loss.item(), seq.size(0))
-			top1.update(prec1.item(), seq.size(0))
-			top10.update(prec10.item(), seq.size(0))
-			nDCG10.update(nDCG, seq.size(0))
+			# update metrics
+			top1.update(prec1.item(), 1)
+			top10.update(prec10.item(), 1)
+			nDCG10.update(nDCG, 1)
 
-			# measure elapsed time
-			batch_time.update(time.time() - end)
-			end = time.time()
-
-			if i % print_freq == 0:
-				print('Val: [{0}/{1}]\t'
-					'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-					'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-					'HitRate@1 {top1.val:.3f} ({top1.avg:.3f})\t'
-					'HitRate@10 {top10.val:.3f} ({top10.avg:.3f})\t'
-					'nDCG@10 {nDCG10.val:.3f} ({nDCG10.avg:.3f})'.format(
-						i, len(val_loader), batch_time=batch_time, loss=losses,
-						top1=top1, top10=top10, nDCG10=nDCG10))
-
-	print(' * HitRate@1 {top1.avg:.3f} - HitRate@10 {top10.avg:.3f} * nDCG@10 {nDCG10.avg:.3f}'
-			.format(top1=top1, top10=top10, nDCG10=nDCG10))
-
-	return losses.avg, top1.avg, top10.avg, nDCG10.avg
+	print('-- {eval} Results Epoch [{epoch}] -- \t'
+			'* HitRate@1 {top1.avg:.3f} - HitRate@10 {top10.avg:.3f} * nDCG@10 {nDCG10.avg:.3f}'
+			.format(eval=eval, epoch=epoch, top1=top1, top10=top10, nDCG10=nDCG10))
+	return top1.avg, top10.avg, nDCG10.avg
 
 import signal
 import sys
