@@ -17,7 +17,7 @@ lr = 0.001
 num_epochs = 350 if torch.cuda.is_available() else 1
 start_epoch = 0
 print_freq = 2
-eval_freq = 20
+eval_freq = 1
 stride = None
 best_loss = float('Inf')
 output_dir = 'checkpoints'
@@ -72,8 +72,9 @@ def main():
 
 	print(" > Loaded the data")
 	print(" > Train length: {}".format(len(train_loader)))
-	print(" > Val length: {}".format(len(val_eval)))
-	print(" > Test length: {}".format(len(test_eval)))
+	print(" > Train Eval length: {}".format(len(train_eval)))
+	print(" > Val Eval length: {}".format(len(val_eval)))
+	print(" > Test Eval length: {}".format(len(test_eval)))
 
 	# create model
 	model = SASRec(
@@ -203,7 +204,7 @@ def evaluate(data_eval, model, epoch, eval):
 			seq_emb, test_emb = model(seq, item_idx, predict=True)
 			test_logits = torch.matmul(seq_emb, test_emb.t())
 			test_logits = test_logits.view(seq.size()[0], seq.size()[1], 101)[:, -1, :]
-			prec1, prec10, nDCG = accuracy(test_logits, topk=(1, 10))
+			prec1, prec10, nDCG = accuracy(test_logits)
 
 			# update metrics
 			top1.update(prec1.item(), 1)

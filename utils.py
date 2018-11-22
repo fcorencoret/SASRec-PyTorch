@@ -47,14 +47,16 @@ def multiple_binary_cross_entropy(seq_emb, pos_emb, pos, neg_emb):
                 torch.log(1 - torch.sigmoid(neg_logits) + 1e-24) * istarget) / torch.sum(istarget)
     return loss
 
-def accuracy(test_logits, hitrate1, hitrate10, ndcg10):
+def accuracy(test_logits):
+    hitrate1, hitrate10, ndcg10 = 0, 0, 0
     rank = torch.sort(torch.sort(test_logits)[1])[1][0]
+    print(rank)
     if rank == 0:
-        hitrate1 += 1
+        hitrate1 = 1
     elif rank < 10:
-        hitrate1 += 1
-        hitrate10 += 1
-        NDCG += 1 / np.log2(rank + 2)
+        hitrate1 = 1
+        hitrate10 = 1
+        NDCG = 1 / np.log2(rank + 2)
     return hitrate1, hitrate10, ndcg10 
 
 

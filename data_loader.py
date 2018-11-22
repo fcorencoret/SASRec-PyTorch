@@ -25,7 +25,7 @@ class MovieLensLoader(data.Dataset):
 					if self.stride: self.total_data += max(1, ((len(user) - self.n) // self.stride) + 1)
 					else: self.total_data += 1
 					
-			if self.dataset == 'val' or self.dataset == 'test':
+			if self.dataset == 'train_eval' or self.dataset == 'val_eval' or self.dataset == 'test_eval':
 				self.total_data = len(self.user_train)
 
 		if self.dataset == 'val' or self.dataset == 'test':
