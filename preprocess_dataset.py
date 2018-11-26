@@ -49,6 +49,7 @@ def data_partition(fname, store=True):
 
 def main():
     order_by_timestamp('ratings.csv')
+    data_partition('ratings.csv')
 
 if __name__ == '__main__':
     main()
