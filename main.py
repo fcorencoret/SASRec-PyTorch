@@ -148,7 +148,9 @@ def main():
 			if not is_best: break
 
 
-	# Evaluate on test set
+	# Evaluate on three sets
+	train_top1, train_top10, train_nDCG10 = evaluate(train_eval, model, epoch, 'Training')
+	val_top1, val_top10, val_nDCG10 = evaluate(val_eval, model, epoch, 'Validation')
 	test_top1, test_top10, test_nDCG10 = evaluate(test_eval, model, epoch, 'Test')
 	# plot training results
 	plot(store, output_dir, model_name)
