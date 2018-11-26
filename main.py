@@ -18,6 +18,7 @@ num_epochs = 350 if torch.cuda.is_available() else 1
 start_epoch = 0
 print_freq = 2
 eval_freq = 20
+b = 2
 stride = None
 best_loss = 0
 output_dir = 'checkpoints'
@@ -41,6 +42,7 @@ def main():
 	model_name = args.model_name
 	lr = args.lr
 	n = args.n
+	b = args.b
 
 	# load data
 	train_loader = torch.utils.data.DataLoader(
@@ -84,7 +86,7 @@ def main():
 		n_items=train_loader.dataset.itemnum, 
 		d=d, 
 		n=n,
-		attention_stack=2,
+		attention_stack=b,
 		ffn_hidden_dim=n,
 		dropout=0.2).to(device)
 	print(" > Created the model")

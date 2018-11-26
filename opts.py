@@ -4,6 +4,8 @@ parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
 parser.add_argument('--model_name', default='SasRec', type=str,
                     help='Model Name')
+parser.add_argument('--b', default=2, type=int,
+                    help='attention stack')
 parser.add_argument('--n', default=50, type=int,
                     help='length of sequence')
 parser.add_argument('--d', default=50, type=int,
