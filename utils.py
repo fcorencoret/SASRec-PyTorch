@@ -53,6 +53,7 @@ def accuracy(test_logits):
     if rank == 0:
         hitrate1 = 1
         hitrate10 = 1
+        ndcg10 = 1 / np.log2(rank + 2)
     elif rank < 10:
         hitrate10 = 1
         ndcg10 = 1 / np.log2(rank + 2)
