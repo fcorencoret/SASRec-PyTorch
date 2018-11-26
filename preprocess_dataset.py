@@ -3,7 +3,7 @@ import pandas as pd
 import json
 
 def order_by_timestamp(dataset_path):
-    ratings = pd.read_csv('data/%s'%dataset_path).sort_values(['userId', 'timestamp'])
+    ratings = pd.read_csv('data/%s'%dataset_path, sep='::').sort_values(['userId', 'timestamp'])
     ratings.to_csv('data/%s'%dataset_path, sep=',')
     print('Dataset ordered by userId and timestamp')
 
