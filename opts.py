@@ -10,7 +10,7 @@ parser.add_argument('--d', default=50, type=int,
                     help='hidden dimension')
 parser.add_argument('--n_epochs', default=10, type=int,
                     help='number of epochs')
-parser.add_argument('--lr', default=0.001, type=int,
+parser.add_argument('--lr', default=0.001, type=float,
                     help='learning rate')
 
 
