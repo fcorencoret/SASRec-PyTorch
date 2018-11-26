@@ -20,7 +20,7 @@ print_freq = 2
 eval_freq = 20
 b = 2
 stride = None
-best_loss = 0
+best_hitrate10 = 0
 output_dir = 'checkpoints'
 model_name = 'SasRec'
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -36,7 +36,7 @@ store = {
 
 
 def main():
-	global args, best_loss, start_epoch, store, model_name
+	global args, best_hitrate10, start_epoch, store, model_name
 	args = parser.parse_args()
 	num_epochs = args.n_epochs
 	model_name = args.model_name
@@ -102,7 +102,7 @@ def main():
 			# Load data from previous training
 			with open(os.path.join(output_dir, model_name) + '_data.json', 'r') as fp:
 				store = json.load(fp)
-			best_loss = store['val_hitrate@10'][-1]
+			best_hitrate10 = store['val_hitrate@10'][-1]
 			model.load_state_dict(checkpoint['state_dict'])
 			print("=> loaded checkpoint (epoch {})"
 			      .format(checkpoint['epoch']))
@@ -135,17 +135,17 @@ def main():
 			store['val_ndcg@10'].append(val_nDCG10.item())
 
 			# remember best loss and save the checkpoint
-			is_best = val_top10 > best_loss
-			best_loss = min(val_top10, best_loss)
+			is_best = val_top10 > best_hitrate10
+			best_hitrate10 = max(val_top10, best_hitrate10)
 			save_checkpoint({
 				'epoch': epoch + 1,
 				'arch': "SelfAttention",
 				'state_dict': model.state_dict(),
-				'best_loss': best_loss,
+				'best_hitrate10': best_hitrate10,
 			}, is_best, output_dir, model_name)
 
 			# Early Stopping
-			if not is_best: break
+			# if not is_best: break
 
 
 	# Evaluate on three sets
@@ -156,13 +156,13 @@ def main():
 	plot(store, output_dir, model_name)
 
 	# remember best loss and save the checkpoint
-	is_best = val_top10 > best_loss
-	best_loss = min(val_top10, best_loss)
+	is_best = val_top10 > best_hitrate10
+	best_hitrate10 = max(val_top10, best_hitrate10)
 	save_checkpoint({
 		'epoch': epoch + 1,
 		'arch': "SelfAttention",
 		'state_dict': model.state_dict(),
-		'best_loss': best_loss,
+		'best_hitrate10': best_hitrate10,
 	}, is_best, output_dir, model_name)
 
 def train(train_loader, model, optimizer, epoch):
