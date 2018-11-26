@@ -21,7 +21,7 @@ eval_freq = 20
 stride = None
 best_loss = 0
 output_dir = 'checkpoints'
-model_name = 'SelfAttention'
+model_name = 'SasRec'
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 store = {
 	'train_loss' : [],
@@ -35,9 +35,12 @@ store = {
 
 
 def main():
-	global args, best_loss, start_epoch, store
+	global args, best_loss, start_epoch, store, model_name
 	args = parser.parse_args()
-	if args.n_epochs: num_epochs = args.n_epochs
+	num_epochs = args.n_epochs
+	model_name = args.model_name
+	lr = args.lr
+	n = args.n
 
 	# load data
 	train_loader = torch.utils.data.DataLoader(
