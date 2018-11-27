@@ -14,6 +14,7 @@ n = 50
 d = 50
 BATCH_SIZE = 128 if torch.cuda.is_available() else 2
 lr = 0.001
+beta2 = 0.98
 num_epochs = 350 if torch.cuda.is_available() else 1
 start_epoch = 0
 print_freq = 2
@@ -110,7 +111,7 @@ def main():
 			print("=> no checkpoint found at '{}'".format(args.resume))
 
 	# define optimizer
-	optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+	optimizer = torch.optim.Adam(model.parameters(), lr=lr, betas=(0.9, beta2))
 
 	print(" > Training is getting started...")
 	print(" > Training takes {} epochs.".format(num_epochs))
