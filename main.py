@@ -98,6 +98,7 @@ def main():
 			print(("=> loading checkpoint '{}'".format(args.test)))
 			checkpoint = torch.load(args.test)
 			epoch = checkpoint['epoch']
+			model.load_state_dict(checkpoint['state_dict'])
 			test_top1, test_top10, test_nDCG10 = evaluate(test_eval, model, epoch, 'Test')
 		else:
 			print("=> no checkpoint found at '{}'".format(args.test))
