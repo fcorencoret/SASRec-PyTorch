@@ -92,6 +92,18 @@ def main():
 		dropout=0.2).to(device)
 	print(" > Created the model")
 
+	# Test modality
+	if args.test:
+		if os.path.isfile(args.test):
+			print(("=> loading checkpoint '{}'".format(args.test)))
+			checkpoint = torch.load(args.test)
+			epoch = checkpoint['epoch']
+			test_top1, test_top10, test_nDCG10 = evaluate(test_eval, model, epoch, 'Test')
+		else:
+			print("=> no checkpoint found at '{}'".format(args.test))
+		sys.exit(0)
+
+
 	# resume
 	if args.resume:
 		if os.path.isfile(args.resume):
