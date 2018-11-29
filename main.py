@@ -33,6 +33,9 @@ store = {
 	'val_hitrate@1' : [],
 	'val_hitrate@10' : [],
 	'val_ndcg@10' : [],
+	'test_hitrate@1' : [0],
+	'test_hitrate@10' : [0],
+	'test_ndcg@10' : [0],
 }
 
 
@@ -139,6 +142,7 @@ def main():
 		if epoch % eval_freq == 0:
 			train_top1, train_top10, train_nDCG10 = evaluate(train_eval, model, epoch, 'Training')
 			val_top1, val_top10, val_nDCG10 = evaluate(val_eval, model, epoch, 'Validation')
+			test_top1, test_top10, test_nDCG10 = evaluate(test_eval, model, epoch, 'Test')
 
 			# store train and val loss
 			store['train_loss'].append(train_loss)
@@ -148,6 +152,10 @@ def main():
 			store['val_hitrate@1'].append(val_top1)
 			store['val_hitrate@10'].append(val_top10)
 			store['val_ndcg@10'].append(val_nDCG10.item())
+			if test_top10 > store['test_hitrate@10'][0]:
+				store['test_hitrate@1'][0] = test_top1
+				store['test_hitrate@10'][0] = test_top10
+				store['test_ndcg@10'][0] = test_nDCG10
 
 			# remember best loss and save the checkpoint
 			is_best = val_top10 > best_hitrate10
