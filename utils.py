@@ -106,3 +106,37 @@ def plot(store, output_dir, model_name):
         json.dump(store, fp)
 
     print(' > Training data saved')
+
+def plot_experiments(output_dir, name, n=50):
+    import matplotlib.pyplot as plt
+
+    with open('checkpoints3/SasRec_n' + str(n) + '_d50_b2_data.json', 'r') as fp:
+                store1 = json.load(fp)
+    with open('checkpoints3/SasRec_n' + str(n) + '_d50_b4_data.json', 'r') as fp:
+                store2 = json.load(fp)
+    with open('checkpoints3/SasRec_n' + str(n) + '_d50_b6_data.json', 'r') as fp:
+                store3 = json.load(fp)
+
+
+    def plot_ax(ax, title, ylabel, xdata1, xdata2, xdata3):
+        # Losses ax1
+        ax.set_title(title)
+        ax.set_xlabel('Epochs')
+        ax.set_ylabel(ylabel)
+        ax.plot([],[], color='red', label='b=2')
+        ax.lines[0].set_xdata([i * 20 for i in range(len(xdata1))])
+        ax.lines[0].set_ydata(xdata1)
+        ax.plot([],[], color='green', label='b=4')
+        ax.lines[1].set_xdata([i * 20 for i in range(len(xdata2))])
+        ax.lines[1].set_ydata(xdata2)
+        ax.plot([],[], color='blue', label='b=6')
+        ax.lines[2].set_xdata([i * 20 for i in range(len(xdata3))])
+        ax.lines[2].set_ydata(xdata3)
+        ax.legend()
+        ax.relim()
+        ax.autoscale_view()
+        return ax
+    fig, ax = plt.subplots( nrows=1, ncols=1)
+    ax = plot_ax(ax, 'Sequence length n=50', 'HitRate@10', strore1['test_hitrate@10'], store2['test_hitrate@10'], store3['test_hitrate@10'])
+    fig.savefig(os.path.join(output_dir, name) + '_results.png')
+    plt.close(fig)
