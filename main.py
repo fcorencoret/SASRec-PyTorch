@@ -152,10 +152,6 @@ def main():
 			store['val_hitrate@1'].append(val_top1)
 			store['val_hitrate@10'].append(val_top10)
 			store['val_ndcg@10'].append(val_nDCG10.item())
-			if test_top10 > store['test_hitrate@10'][0]:
-				store['test_hitrate@1'][0] = test_top1
-				store['test_hitrate@10'][0] = test_top10
-				store['test_ndcg@10'][0] = test_nDCG10.item()
 
 			# remember best loss and save the checkpoint
 			is_best = val_top10 > best_hitrate10
@@ -166,6 +162,12 @@ def main():
 				'state_dict': model.state_dict(),
 				'best_hitrate10': best_hitrate10,
 			}, is_best, output_dir, model_name)
+
+			# update Test Result
+			if is_best:
+				store['test_hitrate@1'][0] = test_top1
+				store['test_hitrate@10'][0] = test_top10
+				store['test_ndcg@10'][0] = test_nDCG10.item()
 
 			# Early Stopping
 			if args.early_stopping and not is_best: break 
