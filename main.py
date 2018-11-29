@@ -160,8 +160,7 @@ def main():
 			}, is_best, output_dir, model_name)
 
 			# Early Stopping
-			# if not is_best: break
-
+			if args.early_stopping and not is_best: break 
 
 	# Evaluate on three sets
 	train_top1, train_top10, train_nDCG10 = evaluate(train_eval, model, epoch, 'Training')
