@@ -89,7 +89,8 @@ def main():
 		n=n,
 		attention_stack=b,
 		ffn_hidden_dim=n,
-		dropout=0.2).to(device)
+		dropout=0.2,
+		causality=True).to(device)
 	print(" > Created the model")
 
 	# Test modality

@@ -30,12 +30,13 @@ class PositionalEncoding(nn.Module):
 		# Add Sinusoidal positional encoding
 
 class AttentionBlock(nn.Module):
-	def __init__(self, n_items, d=300, n=50, ffn_hidden_dim=50, dropout=0.2):
+	def __init__(self, n_items, d=300, n=50, ffn_hidden_dim=50, dropout=0.2, causality=False):
 		super().__init__()
 		self.n_items = n_items
 		self.d = d
 		self.n = n
 		self.ffn_hidden_dim = ffn_hidden_dim
+		self.causality = causality
 		# TODO test without bias
 		self.key_embedding = nn.Linear(self.d, self.d, bias=True).to(device)
 		self.query_embedding = nn.Linear(self.d, self.d, bias=True).to(device)
@@ -54,6 +55,12 @@ class AttentionBlock(nn.Module):
 		# Apply Key Masking 
 		key_padding_mask = ((torch.sum(keys, dim=-1) == 0).to(device, dtype=torch.float32) * (-2**32 + 1)).unsqueeze(1).repeat(1, self.n, 1)
 		output = torch.where(padding_mask.unsqueeze(1).repeat(1, self.n, 1).eq(0), key_padding_mask, attention_coefs) 
+
+		if self.causality:
+			diag_vals = torch.ones_like(output[0])
+			tril = torch.tril(diag_vals).unsqueeze(0).repeat(output.size(0), 1, 1)
+			causality_padding_mask = torch.ones_like(tril) * (-2**32 + 1)
+			output = torch.where(tril.eq(0), causality_padding_mask, output) 
 
 		# Activations
 		output = F.softmax(output, dim=2)
@@ -93,7 +100,7 @@ class PointWiseFFN(nn.Module):
 		return X + ffn2
 
 class SASRec(nn.Module):
-	def __init__(self, n_items, d=300, n=30, attention_stack=2, ffn_hidden_dim=50, dropout=0.2):
+	def __init__(self, n_items, d=300, n=30, attention_stack=2, ffn_hidden_dim=50, dropout=0.2, causality=False):
 		super().__init__()
 		self.n_items = n_items
 		self.d = d
@@ -114,7 +121,9 @@ class SASRec(nn.Module):
 					n_items=self.n_items, 
 					d=self.d, 
 					n=self.n,
-					ffn_hidden_dim=self.ffn_hidden_dim),
+					ffn_hidden_dim=self.ffn_hidden_dim,
+					dropout=dropout,
+					causality=causality),
 				PointWiseFFN(
 					self.dropout,
 					ffn_hidden_dim=self.ffn_hidden_dim)
