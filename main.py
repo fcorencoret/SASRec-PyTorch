@@ -155,7 +155,7 @@ def main():
 			if test_top10 > store['test_hitrate@10'][0]:
 				store['test_hitrate@1'][0] = test_top1
 				store['test_hitrate@10'][0] = test_top10
-				store['test_ndcg@10'][0] = test_nDCG10
+				store['test_ndcg@10'][0] = test_nDCG10.item()
 
 			# remember best loss and save the checkpoint
 			is_best = val_top10 > best_hitrate10
