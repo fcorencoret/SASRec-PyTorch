@@ -1,4 +1,4 @@
-PyTorch implementation of [Self-Attentive Sequential Recommendation](https://arxiv.org/abs/1808.09781)
+## PyTorch implementation of [Self-Attentive Sequential Recommendation](https://arxiv.org/abs/1808.09781)
 
 To train the model on MovieLens-1M (with default hyper-parameters):
 ~~~bash
